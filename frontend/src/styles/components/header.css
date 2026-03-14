@@ -1,0 +1,123 @@
+.app-header {
+  height:68px;
+  padding: 0 32px;
+  margin-bottom: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.7),
+    rgba(0, 0, 0, 0.6),
+    rgba(0, 0, 0, 0.5),
+    rgba(0, 0, 0, 0.4),
+    rgba(0, 0, 0, 0.3),
+    rgba(0, 0, 0, 0.2),
+    rgba(0, 0, 0, 0.1),
+    rgba(0, 0, 0, 0.0)
+  );
+  color: var(--color-text-main);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  width: 100%;
+  border: none;
+  box-sizing: border-box;
+  transition: background 1s ease, color 1s ease;
+}
+
+.app-header--scrolled {
+  background: #000000;
+  color: #ffffff;
+}
+
+.app-header-nav {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: nowrap;
+  justify-content: space-between;
+  height: 100%;
+}
+
+.app-link-brand {
+  display: inline-flex;
+  align-items: center;
+}
+
+.header-left,
+.header-right {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.header-logo {
+  width:100px;
+  display: block;
+}
+
+.header-avatar-wrap {
+  position: relative;
+}
+
+.header-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: #444444;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: bold;
+  color: #ffffff;
+  overflow: hidden;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.header-avatar:hover {
+  background-color: #555555;
+}
+
+.header-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.header-avatar-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 180px;
+  background: rgba(20, 20, 20, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  z-index: 1000;
+}
+
+.header-avatar-menu-item {
+  display: block;
+  width: 100%;
+  padding: 10px 16px;
+  text-align: left;
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+
+.header-avatar-menu-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.header-avatar-menu-item--logout {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+

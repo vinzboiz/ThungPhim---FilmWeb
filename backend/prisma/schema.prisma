@@ -1,0 +1,242 @@
+// Prisma schema for thungphim (code-first)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model users {
+  id              Int       @id @default(autoincrement())
+  email           String    @unique
+  password_hash   String
+  full_name       String
+  avatar_url      String?
+  is_admin        Boolean   @default(false)
+  locked          Boolean   @default(false)
+  preferred_lang  String    @default("vi")
+  preferred_theme String    @default("dark")
+  last_login_at   DateTime?
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+
+  profiles profiles[]
+  reviews  reviews[]
+}
+
+model profiles {
+  id                  Int       @id @default(autoincrement())
+  user_id             Int
+  name                String
+  avatar              String?
+  is_kids             Boolean   @default(false)
+  max_maturity_rating String    @default("18+")
+  pin_code            String?
+  created_at          DateTime  @default(now())
+
+  user          users          @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  watch_history watch_history[]
+  watchlist     watchlist[]
+  reviews       reviews[]
+  favorites     favorites[]
+
+  @@index([user_id], name: "idx_profiles_user")
+}
+
+model movies {
+  id               Int        @id @default(autoincrement())
+  title            String
+  short_intro      String?    @db.VarChar(255)
+  description      String?    @db.Text
+  release_year     Int?
+  duration_minutes Int?
+  thumbnail_url    String?    // poster dọc (card)
+  banner_url       String?    // ảnh banner ngang cho Hero/Home
+  trailer_url      String?
+  video_url        String?
+  rating           Decimal?   @db.Decimal(3, 1)
+  age_rating       String?
+  country_code     String?    @db.VarChar(10) // quốc gia sản xuất (ISO 3166-1 alpha-2)
+  is_featured      Boolean    @default(false)
+  view_count       Int        @default(0)
+  like_count       Int        @default(0)
+  created_at       DateTime   @default(now())
+  updated_at       DateTime   @updatedAt
+
+  movie_genres  movie_genres[]
+  cast          cast[]
+  watchlist     watchlist[]
+  watch_history watch_history[]
+  reviews       reviews[]
+  favorites     favorites[]
+}
+
+model genres {
+  id            Int      @id @default(autoincrement())
+  name          String   @unique
+  description   String?  @db.Text
+  thumbnail_url String?
+
+  movie_genres movie_genres[]
+}
+
+model movie_genres {
+  movie_id Int
+  genre_id Int
+
+  movie movies @relation(fields: [movie_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  genre genres @relation(fields: [genre_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@id([movie_id, genre_id])
+}
+
+model persons {
+  id          Int      @id @default(autoincrement())
+  name        String
+  avatar_url  String?
+  biography   String?  @db.Text
+  person_type String?  @db.VarChar(20) // 'actor' | 'director'
+
+  cast cast[]
+}
+
+model cast {
+  id         Int       @id @default(autoincrement())
+  movie_id   Int?
+  episode_id Int?
+  person_id  Int
+  role       String
+
+  movie   movies?   @relation(fields: [movie_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  episode episodes? @relation(fields: [episode_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  person  persons   @relation(fields: [person_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([movie_id, episode_id, person_id, role], name: "uniq_cast_item")
+  @@index([movie_id], name: "idx_cast_movie")
+  @@index([episode_id], name: "idx_cast_episode")
+}
+
+model series {
+  id            Int      @id @default(autoincrement())
+  title         String
+  description   String?  @db.Text
+  thumbnail_url String?  // poster dọc
+  banner_url    String?  // banner ngang
+  trailer_url   String?  // trailer của toàn bộ series
+  age_rating    String?
+  is_featured   Boolean  @default(false)
+  view_count    Int      @default(0)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  seasons  seasons[]
+  episodes episodes[]
+  watchlist watchlist[]
+}
+
+model seasons {
+  id            Int      @id @default(autoincrement())
+  series_id     Int
+  season_number Int
+  title         String?
+  description   String?  @db.Text
+
+  series   series    @relation(fields: [series_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  episodes episodes[]
+
+  @@index([series_id], name: "idx_seasons_series")
+}
+
+model episodes {
+  id               Int      @id @default(autoincrement())
+  series_id        Int
+  season_id        Int?
+  episode_number   Int
+  title            String
+  description      String?  @db.Text
+  duration_minutes Int?
+  thumbnail_url    String?
+  video_url        String?
+  release_date     DateTime?
+  view_count       Int      @default(0)
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  series   series   @relation(fields: [series_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  season   seasons? @relation(fields: [season_id], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  cast         cast[]
+  watchlist    watchlist[]
+  watch_history watch_history[]
+  reviews      reviews[]
+
+  @@index([series_id], name: "idx_episodes_series")
+  @@index([season_id], name: "idx_episodes_season")
+}
+
+model watchlist {
+  id         Int      @id @default(autoincrement())
+  profile_id Int
+  movie_id   Int?
+  series_id  Int?
+  episode_id Int?
+  added_at   DateTime @default(now())
+
+  profile profiles @relation(fields: [profile_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  movie   movies?  @relation(fields: [movie_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  series  series?  @relation(fields: [series_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  episode episodes? @relation(fields: [episode_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([profile_id, movie_id, series_id, episode_id], name: "uniq_watchlist_per_item")
+}
+
+model watch_history {
+  id               Int      @id @default(autoincrement())
+  profile_id       Int
+  movie_id         Int?
+  episode_id       Int?
+  progress_seconds Int      @default(0)
+  watched_at       DateTime @default(now())
+
+  profile profiles @relation(fields: [profile_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  movie   movies?  @relation(fields: [movie_id], references: [id])
+  episode episodes? @relation(fields: [episode_id], references: [id])
+
+  @@index([profile_id], name: "idx_wh_profile")
+  @@index([movie_id],   name: "idx_wh_movie")
+  @@index([episode_id], name: "idx_wh_episode")
+}
+
+model reviews {
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  profile_id Int
+  movie_id   Int?
+  episode_id Int?
+  rating     Int
+  comment    String?  @db.Text
+  created_at DateTime @default(now())
+
+  user    users    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  profile profiles @relation(fields: [profile_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  movie   movies?  @relation(fields: [movie_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  episode episodes? @relation(fields: [episode_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([profile_id, movie_id],   name: "uniq_review_profile_movie")
+  @@unique([profile_id, episode_id], name: "uniq_review_profile_episode")
+}
+
+model favorites {
+  id         Int      @id @default(autoincrement())
+  profile_id Int
+  movie_id   Int
+  added_at   DateTime @default(now())
+
+  profile profiles @relation(fields: [profile_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  movie   movies   @relation(fields: [movie_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([profile_id, movie_id], name: "uniq_favorite_profile_movie")
+}
+

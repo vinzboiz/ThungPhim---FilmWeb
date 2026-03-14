@@ -1,0 +1,48 @@
+.home-root {
+  padding: 0 24px 24px;
+}
+
+.home-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.home-row-track {
+  display: flex;
+  gap: 8px;
+  overflow: hidden;
+  padding: 8px 0 16px;
+  scroll-behavior: smooth;
+  flex: 1;
+}
+
+.home-row-item {
+  min-width: 200px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.home-row-item:hover {
+  transform: scale(1.08);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  z-index: 2;
+}
+
+.home-row-arrow {
+  border: none;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.home-row-arrow-right {
+  margin-left: 4px;
+}
+
