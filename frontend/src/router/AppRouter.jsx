@@ -3,8 +3,7 @@ import HomePage from '../pages/HomePage.jsx';
 import LoginPage from '../pages/LoginPage.jsx';
 import RegisterPage from '../pages/RegisterPage.jsx';
 import ProfileSelectPage from '../pages/ProfileSelectPage.jsx';
-import MovieDetailPage from '../pages/MovieDetailPage.jsx';
-import SeriesDetailPage from '../pages/SeriesDetailPage.jsx';
+import ContentDetailPage from '../pages/ContentDetailPage.jsx';
 import PersonDetailPage from '../pages/PersonDetailPage.jsx';
 import MyListPage from '../pages/MyListPage.jsx';
 import FavoritesPage from '../pages/FavoritesPage.jsx';
@@ -16,9 +15,12 @@ import AdminPersonsPage from '../pages/AdminPersonsPage.jsx';
 import AdminSeriesListPage from '../pages/AdminSeriesListPage.jsx';
 import AdminSeriesDetailPage from '../pages/AdminSeriesDetailPage.jsx';
 import AdminEditSeriesPage from '../pages/AdminEditSeriesPage.jsx';
+import AdminEditEpisodePage from '../pages/AdminEditEpisodePage.jsx';
 import AdminDashboardPage from '../pages/AdminDashboardPage.jsx';
 import SearchPage from '../pages/SearchPage.jsx';
+import GenresPage from '../pages/GenresPage.jsx';
 import WatchEpisodePage from '../pages/WatchEpisodePage.jsx';
+import WatchMoviePage from '../pages/WatchMoviePage.jsx';
 import WatchHistoryPage from '../pages/WatchHistoryPage.jsx';
 import AccountPage from '../pages/AccountPage.jsx';
 import MainLayout from '../components/layout/MainLayout.jsx';
@@ -29,6 +31,30 @@ function AppRouter() {
       <Routes>
         <Route
           path="/"
+          element={(
+            <MainLayout>
+              <HomePage />
+            </MainLayout>
+          )}
+        />
+        <Route
+          path="/series"
+          element={(
+            <MainLayout>
+              <HomePage />
+            </MainLayout>
+          )}
+        />
+        <Route
+          path="/movies"
+          element={(
+            <MainLayout>
+              <HomePage />
+            </MainLayout>
+          )}
+        />
+        <Route
+          path="/browse/new"
           element={(
             <MainLayout>
               <HomePage />
@@ -63,7 +89,7 @@ function AppRouter() {
           path="/movies/:id"
           element={(
             <MainLayout>
-              <MovieDetailPage />
+              <ContentDetailPage />
             </MainLayout>
           )}
         />
@@ -71,7 +97,7 @@ function AppRouter() {
           path="/series/:id"
           element={(
             <MainLayout>
-              <SeriesDetailPage />
+              <ContentDetailPage />
             </MainLayout>
           )}
         />
@@ -104,6 +130,30 @@ function AppRouter() {
           element={(
             <MainLayout>
               <SearchPage />
+            </MainLayout>
+          )}
+        />
+        <Route
+          path="/browse/:type"
+          element={(
+            <MainLayout>
+              <HomePage />
+            </MainLayout>
+          )}
+        />
+        <Route
+          path="/genres"
+          element={(
+            <MainLayout>
+              <GenresPage />
+            </MainLayout>
+          )}
+        />
+        <Route
+          path="/watch/movie/:id"
+          element={(
+            <MainLayout>
+              <WatchMoviePage />
             </MainLayout>
           )}
         />
@@ -176,6 +226,14 @@ function AppRouter() {
           element={(
             <MainLayout>
               <AdminEditSeriesPage />
+            </MainLayout>
+          )}
+        />
+        <Route
+          path="/admin/series/:id/episode/:episodeId/edit"
+          element={(
+            <MainLayout>
+              <AdminEditEpisodePage />
             </MainLayout>
           )}
         />

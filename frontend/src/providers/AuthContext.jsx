@@ -44,13 +44,13 @@ export function AuthProvider({ children }) {
     setTokenState(null);
     setUser(null);
     setProfileIdState(null);
-    setProfileInfo(null);
+    setProfileInfo(null, null, null);
     setAdminFlag(false);
   };
 
-  const setProfileId = (id, name) => {
+  const setProfileId = (id, name, avatar) => {
     setProfileIdState(id ? String(id) : null);
-    setProfileInfo(id || null, name || '');
+    setProfileInfo(id || null, name || '', avatar || '');
   };
 
   const value = {

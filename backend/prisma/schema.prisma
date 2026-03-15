@@ -75,12 +75,13 @@ model movies {
 }
 
 model genres {
-  id            Int      @id @default(autoincrement())
-  name          String   @unique
-  description   String?  @db.Text
-  thumbnail_url String?
+  id             Int      @id @default(autoincrement())
+  name           String   @unique
+  description    String?  @db.Text
+  thumbnail_url  String?
 
-  movie_genres movie_genres[]
+  movie_genres  movie_genres[]
+  series_genres series_genres[]
 }
 
 model movie_genres {
@@ -91,6 +92,16 @@ model movie_genres {
   genre genres @relation(fields: [genre_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
   @@id([movie_id, genre_id])
+}
+
+model series_genres {
+  series_id Int
+  genre_id  Int
+
+  series series @relation(fields: [series_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  genre  genres @relation(fields: [genre_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@id([series_id, genre_id])
 }
 
 model persons {
@@ -132,9 +143,10 @@ model series {
   created_at    DateTime @default(now())
   updated_at    DateTime @updatedAt
 
-  seasons  seasons[]
-  episodes episodes[]
-  watchlist watchlist[]
+  seasons       seasons[]
+  episodes      episodes[]
+  series_genres series_genres[]
+  watchlist     watchlist[]
 }
 
 model seasons {

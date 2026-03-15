@@ -87,18 +87,28 @@ async function upsertReview(req, res) {
 
 async function listMovieReviews(req, res) {
   const { id } = req.params;
+  const limit = Math.min(Number(req.query.limit) || 50, 100);
+  const offset = Math.max(0, Number(req.query.offset) || 0);
   try {
-    const [rows] = await pool.query(
-      `SELECT r.id, r.rating, r.comment, r.created_at, r.user_id,
-              COALESCE(u.full_name, 'Thành viên') AS profile_name
-       FROM reviews r
-       LEFT JOIN users u ON u.id = r.user_id
-       WHERE r.movie_id = ?
-       ORDER BY r.created_at DESC`,
-      [id]
-    );
+    const [countResult, rowsResult] = await Promise.all([
+      pool.query('SELECT COUNT(*) AS cnt FROM reviews WHERE movie_id = ?', [id]),
+      pool.query(
+        `SELECT r.id,
+                (SELECT r2.rating FROM reviews r2 WHERE r2.movie_id = r.movie_id AND r2.user_id = r.user_id ORDER BY r2.created_at DESC LIMIT 1) AS rating,
+                r.comment, r.created_at, r.user_id,
+                COALESCE(u.full_name, 'Thành viên') AS profile_name
+         FROM reviews r
+         LEFT JOIN users u ON u.id = r.user_id
+         WHERE r.movie_id = ?
+         ORDER BY r.created_at DESC
+         LIMIT ? OFFSET ?`,
+        [id, limit, offset]
+      ),
+    ]);
+    const total = Number(countResult[0]?.[0]?.cnt ?? 0);
+    const rows = rowsResult[0] || [];
     const avgRating = await getAvgRatingLatestPerUser('movie_id', id);
-    res.json({ reviews: rows, avg_rating: avgRating, total: rows.length });
+    res.json({ reviews: rows, avg_rating: avgRating, total });
   } catch (err) {
     console.error('listMovieReviews error:', err);
     res.status(500).json({ message: 'Internal server error' });
@@ -107,18 +117,28 @@ async function listMovieReviews(req, res) {
 
 async function listEpisodeReviews(req, res) {
   const { id } = req.params;
+  const limit = Math.min(Number(req.query.limit) || 50, 100);
+  const offset = Math.max(0, Number(req.query.offset) || 0);
   try {
-    const [rows] = await pool.query(
-      `SELECT r.id, r.rating, r.comment, r.created_at, r.user_id,
-              COALESCE(u.full_name, 'Thành viên') AS profile_name
-       FROM reviews r
-       LEFT JOIN users u ON u.id = r.user_id
-       WHERE r.episode_id = ?
-       ORDER BY r.created_at DESC`,
-      [id]
-    );
+    const [countResult, rowsResult] = await Promise.all([
+      pool.query('SELECT COUNT(*) AS cnt FROM reviews WHERE episode_id = ?', [id]),
+      pool.query(
+        `SELECT r.id,
+                (SELECT r2.rating FROM reviews r2 WHERE r2.episode_id = r.episode_id AND r2.user_id = r.user_id ORDER BY r2.created_at DESC LIMIT 1) AS rating,
+                r.comment, r.created_at, r.user_id,
+                COALESCE(u.full_name, 'Thành viên') AS profile_name
+         FROM reviews r
+         LEFT JOIN users u ON u.id = r.user_id
+         WHERE r.episode_id = ?
+         ORDER BY r.created_at DESC
+         LIMIT ? OFFSET ?`,
+        [id, limit, offset]
+      ),
+    ]);
+    const total = Number(countResult[0]?.[0]?.cnt ?? 0);
+    const rows = rowsResult[0] || [];
     const avgRating = await getAvgRatingLatestPerUser('episode_id', id);
-    res.json({ reviews: rows, avg_rating: avgRating, total: rows.length });
+    res.json({ reviews: rows, avg_rating: avgRating, total });
   } catch (err) {
     console.error('listEpisodeReviews error:', err);
     res.status(500).json({ message: 'Internal server error' });
@@ -127,18 +147,28 @@ async function listEpisodeReviews(req, res) {
 
 async function listSeriesReviews(req, res) {
   const { id } = req.params;
+  const limit = Math.min(Number(req.query.limit) || 50, 100);
+  const offset = Math.max(0, Number(req.query.offset) || 0);
   try {
-    const [rows] = await pool.query(
-      `SELECT r.id, r.rating, r.comment, r.created_at, r.user_id,
-              COALESCE(u.full_name, 'Thành viên') AS profile_name
-       FROM reviews r
-       LEFT JOIN users u ON u.id = r.user_id
-       WHERE r.series_id = ?
-       ORDER BY r.created_at DESC`,
-      [id]
-    );
+    const [countResult, rowsResult] = await Promise.all([
+      pool.query('SELECT COUNT(*) AS cnt FROM reviews WHERE series_id = ?', [id]),
+      pool.query(
+        `SELECT r.id,
+                (SELECT r2.rating FROM reviews r2 WHERE r2.series_id = r.series_id AND r2.user_id = r.user_id ORDER BY r2.created_at DESC LIMIT 1) AS rating,
+                r.comment, r.created_at, r.user_id,
+                COALESCE(u.full_name, 'Thành viên') AS profile_name
+         FROM reviews r
+         LEFT JOIN users u ON u.id = r.user_id
+         WHERE r.series_id = ?
+         ORDER BY r.created_at DESC
+         LIMIT ? OFFSET ?`,
+        [id, limit, offset]
+      ),
+    ]);
+    const total = Number(countResult[0]?.[0]?.cnt ?? 0);
+    const rows = rowsResult[0] || [];
     const avgRating = await getAvgRatingLatestPerUser('series_id', id);
-    res.json({ reviews: rows, avg_rating: avgRating, total: rows.length });
+    res.json({ reviews: rows, avg_rating: avgRating, total });
   } catch (err) {
     console.error('listSeriesReviews error:', err);
     res.status(500).json({ message: 'Internal server error' });

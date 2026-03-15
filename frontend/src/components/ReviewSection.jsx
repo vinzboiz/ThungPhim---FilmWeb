@@ -2,21 +2,26 @@ import { useEffect, useState } from 'react';
 import { API_BASE, getToken } from '../apis/client';
 import '../styles/components/review-section.css';
 
+const REVIEW_PAGE_SIZE = 10;
+
 /**
  * Đánh giá theo account (mỗi tài khoản một đánh giá), không theo profile.
  * contentType: 'movie' | 'series' | 'episode'
  * contentId: id của movie / series / episode
+ * initialLimit: số bình luận tải lần đầu (mặc định 10)
+ * scrollRef: ref gán vào section để nút "Bình luận" bên ngoài có thể scroll tới
  */
-function ReviewSection({ contentType, contentId, title }) {
+function ReviewSection({ contentType, contentId, title, initialLimit = REVIEW_PAGE_SIZE, scrollRef }) {
   const [reviews, setReviews] = useState([]);
   const [avgRating, setAvgRating] = useState(null);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const [userId, setUserId] = useState(null); // id tài khoản đăng nhập (để đánh dấu "của mình")
+  const [userId, setUserId] = useState(null);
   const token = getToken();
 
   const endpoint = contentType === 'movie'
@@ -25,23 +30,30 @@ function ReviewSection({ contentType, contentId, title }) {
       ? `/api/reviews/series/${contentId}`
       : `/api/reviews/episodes/${contentId}`;
 
-  const loadReviews = () => {
+  const loadReviews = (limit = initialLimit, offset = 0, append = false) => {
     if (!contentId) return;
-    setLoading(true);
-    fetch(`${API_BASE}${endpoint}`)
+    if (!append) setLoading(true);
+    else setLoadingMore(true);
+    const url = `${API_BASE}${endpoint}?limit=${limit}&offset=${offset}`;
+    fetch(url)
       .then((r) => (r.ok ? r.json() : { reviews: [], avg_rating: null, total: 0 }))
       .then((data) => {
         const list = data && Array.isArray(data.reviews) ? data.reviews : [];
-        setReviews(list);
+        if (append) setReviews((prev) => [...prev, ...list]);
+        else setReviews(list);
         setAvgRating(data && data.avg_rating != null ? Number(data.avg_rating) : null);
         setTotal(data && data.total != null ? Number(data.total) : 0);
       })
-      .catch(() => setReviews([]))
-      .finally(() => setLoading(false));
+      .catch(() => { if (!append) setReviews([]); })
+      .finally(() => { setLoading(false); setLoadingMore(false); });
+  };
+
+  const loadMore = () => {
+    loadReviews(REVIEW_PAGE_SIZE, reviews.length, true);
   };
 
   useEffect(() => {
-    loadReviews();
+    loadReviews(initialLimit, 0, false);
   }, [contentType, contentId]);
 
   // Lấy user_id của tài khoản đăng nhập (để đánh dấu đánh giá "của mình")
@@ -97,7 +109,7 @@ function ReviewSection({ contentType, contentId, title }) {
   };
 
   return (
-    <section className="review-section">
+    <section className="review-section" ref={scrollRef}>
       <h2 className="review-section-title">{title || 'Đánh giá & Bình luận'}</h2>
 
       <div className="review-section-summary">
@@ -145,23 +157,30 @@ function ReviewSection({ contentType, contentId, title }) {
       {loading ? (
         <p className="review-section-loading">Đang tải đánh giá...</p>
       ) : (
-        <ul className="review-section-list">
-          {reviews.length === 0 && <li className="review-section-empty">Chưa có đánh giá nào.</li>}
-          {reviews.map((r) => (
-            <li key={r.id} className={`review-section-item ${String(r.user_id) === String(userId) ? 'is-mine' : ''}`}>
-              <div className="review-section-item-header">
-                <span className="review-section-item-name">{r.profile_name || 'Thành viên'}</span>
-                <span className="review-section-item-stars">
-                  {[1, 2, 3, 4, 5].map((i) => (
-                    <span key={i} className={i <= r.rating ? 'star filled' : 'star'}>★</span>
-                  ))}
-                </span>
-                <span className="review-section-item-date">{formatDate(r.created_at)}</span>
-              </div>
-              {r.comment && <p className="review-section-item-comment">{r.comment}</p>}
-            </li>
-          ))}
-        </ul>
+        <>
+          <ul className="review-section-list">
+            {reviews.length === 0 && <li className="review-section-empty">Chưa có đánh giá nào.</li>}
+            {reviews.map((r) => (
+              <li key={r.id} className={`review-section-item ${String(r.user_id) === String(userId) ? 'is-mine' : ''}`}>
+                <div className="review-section-item-header">
+                  <span className="review-section-item-name">{r.profile_name || 'Thành viên'}</span>
+                  <span className="review-section-item-stars">
+                    {[1, 2, 3, 4, 5].map((i) => (
+                      <span key={i} className={i <= r.rating ? 'star filled' : 'star'}>★</span>
+                    ))}
+                  </span>
+                  <span className="review-section-item-date">{formatDate(r.created_at)}</span>
+                </div>
+                {r.comment && <p className="review-section-item-comment">{r.comment}</p>}
+              </li>
+            ))}
+          </ul>
+          {reviews.length < total && (
+            <button type="button" className="review-section-load-more" onClick={loadMore} disabled={loadingMore}>
+              {loadingMore ? 'Đang tải...' : 'Tải thêm bình luận'}
+            </button>
+          )}
+        </>
       )}
     </section>
   );

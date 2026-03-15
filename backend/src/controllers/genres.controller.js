@@ -1,5 +1,71 @@
 const { pool } = require('../config/db');
 
+/** Top N thể loại; kèm danh sách phim + series mỗi thể loại. Query: type=movie|series, featured=1 */
+async function listTopGenresWithMovies(req, res) {
+  const genreLimit = Math.min(Number(req.query.limit) || 5, 10);
+  const moviesPerGenre = Math.min(Number(req.query.movies_per_genre) || 10, 20);
+  const type = (req.query.type || '').toLowerCase();
+  const featured = req.query.featured === '1' || req.query.featured === 'true';
+  const featWhere = featured ? ' AND m.is_featured = 1' : '';
+  const featWhereS = featured ? ' AND s.is_featured = 1' : '';
+  try {
+    const [topGenres] = await pool.query(
+      `SELECT g.id, g.name,
+              COUNT(u.content_id) AS cnt,
+              COALESCE(AVG(u.rating), 0) AS avg_rating,
+              COALESCE(SUM(u.view_count), 0) AS total_views
+       FROM genres g
+       LEFT JOIN (
+         SELECT mg.genre_id, m.id AS content_id, m.rating, m.view_count
+         FROM movie_genres mg
+         INNER JOIN movies m ON m.id = mg.movie_id
+         UNION ALL
+         SELECT sg.genre_id, s.id AS content_id, s.rating, s.view_count
+         FROM series_genres sg
+         INNER JOIN series s ON s.id = sg.series_id
+       ) u ON u.genre_id = g.id
+       GROUP BY g.id, g.name
+       ORDER BY cnt DESC, avg_rating DESC, total_views DESC
+       LIMIT ?`,
+      [genreLimit]
+    );
+    const result = [];
+    for (const row of topGenres || []) {
+      let combined = [];
+      if (type !== 'series') {
+        const [movieRows] = await pool.query(
+          `SELECT m.id, m.title, m.thumbnail_url, m.banner_url, m.age_rating, m.release_year, m.country_code, m.rating
+           FROM movies m
+           INNER JOIN movie_genres mg ON mg.movie_id = m.id AND mg.genre_id = ?
+           WHERE 1=1${featWhere}
+           ORDER BY m.id DESC
+           LIMIT ?`,
+          [row.id, moviesPerGenre]
+        );
+        combined = (movieRows || []).map((m) => ({ ...m, type: 'movie' }));
+      }
+      if (type !== 'movie') {
+        const [seriesRows] = await pool.query(
+          `SELECT s.id, s.title, s.thumbnail_url, s.banner_url, s.age_rating, s.release_year, s.country_code, s.rating
+           FROM series s
+           INNER JOIN series_genres sg ON sg.series_id = s.id AND sg.genre_id = ?
+           WHERE 1=1${featWhereS}
+           ORDER BY s.id DESC
+           LIMIT ?`,
+          [row.id, moviesPerGenre]
+        );
+        combined = [...combined, ...(seriesRows || []).map((s) => ({ ...s, type: 'series' }))];
+      }
+      combined = combined.sort((a, b) => b.id - a.id).slice(0, moviesPerGenre);
+      result.push({ genre: { id: row.id, name: row.name }, movies: combined });
+    }
+    res.json(result);
+  } catch (err) {
+    console.error('listTopGenresWithMovies error:', err);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
 async function listGenres(req, res) {
   try {
     const [rows] = await pool.query(
@@ -81,6 +147,7 @@ async function deleteGenre(req, res) {
 }
 
 module.exports = {
+  listTopGenresWithMovies,
   listGenres,
   createGenre,
   updateGenre,

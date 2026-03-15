@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api, API_BASE, getToken } from '../apis/client';
+import '../styles/pages/admin-common.css';
 
 function AdminAddMoviePage() {
   const [form, setForm] = useState({
@@ -175,7 +176,9 @@ function AdminAddMoviePage() {
       // nếu chọn genres và có token admin → set genres cho movie
       const token = getToken();
       if (movieId && token && selectedGenreIds.length > 0) {
-        await api('POST', `/api/movies/${movieId}/genres`, { genre_ids: selectedGenreIds });
+        await api('POST', `/api/movies/${movieId}/genres`, {
+          genre_ids: selectedGenreIds.map((g) => Number(g)).filter((g) => g > 0),
+        });
       }
 
       setMessage(`Đã thêm phim với ID ${movieId || ''}`);
@@ -202,12 +205,12 @@ function AdminAddMoviePage() {
   }
 
   return (
-    <div style={{ padding: '24px', maxWidth: '600px', margin: '0 auto' }}>
+    <div className="admin-page admin-page--narrow">
       <h1>Thêm phim mới (Admin đơn giản)</h1>
-      {message && <p style={{ color: 'green' }}>{message}</p>}
-      {error && <p style={{ color: 'red' }}>{error}</p>}
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        <label>
+      {message && <p className="admin-msg-success">{message}</p>}
+      {error && <p className="admin-msg-error">{error}</p>}
+      <form onSubmit={handleSubmit} className="admin-form-col">
+        <label className="admin-form-label">
           Tiêu đề *
           <input
             type="text"
@@ -217,7 +220,7 @@ function AdminAddMoviePage() {
             required
           />
         </label>
-        <label>
+        <label className="admin-form-label">
           Giới thiệu ngắn (hiện trên banner)
           <input
             type="text"
@@ -227,7 +230,7 @@ function AdminAddMoviePage() {
             onChange={handleChange}
           />
         </label>
-        <label>
+        <label className="admin-form-label">
           Mô tả
           <textarea
             name="description"
@@ -235,7 +238,7 @@ function AdminAddMoviePage() {
             onChange={handleChange}
           />
         </label>
-        <label>
+        <label className="admin-form-label">
           Năm phát hành
           <input
             type="number"
@@ -244,7 +247,7 @@ function AdminAddMoviePage() {
             onChange={handleChange}
           />
         </label>
-        <label>
+        <label className="admin-form-label">
           Thời lượng (phút)
           <input
             type="number"
@@ -253,43 +256,43 @@ function AdminAddMoviePage() {
             onChange={handleChange}
           />
         </label>
-        <fieldset style={{ border: '1px solid #444', padding: '12px', marginBottom: '8px' }}>
+        <fieldset className="admin-fieldset">
           <legend>Ảnh bìa (poster)</legend>
-          <label style={{ display: 'block', marginBottom: '8px' }}>
+          <label className="admin-form-label">
             <strong>Chọn file ảnh</strong> — upload lên server
-            <input type="file" accept="image/*" onChange={handleThumbnailFileChange} style={{ display: 'block', marginTop: '4px' }} />
+            <input type="file" accept="image/*" onChange={handleThumbnailFileChange} />
           </label>
-          <label>
+          <label className="admin-form-label">
             Thumbnail URL (sau khi upload hoặc dán link)
-            <input type="text" name="thumbnail_url" value={form.thumbnail_url} onChange={handleChange} placeholder="/uploads/images/..." style={{ display: 'block', width: '100%', padding: '6px', marginTop: '4px' }} />
+            <input type="text" name="thumbnail_url" value={form.thumbnail_url} onChange={handleChange} placeholder="/uploads/images/..." />
           </label>
         </fieldset>
-        <fieldset style={{ border: '1px solid #444', padding: '12px', marginBottom: '8px' }}>
+        <fieldset className="admin-fieldset">
           <legend>Banner ngang (ảnh nền trang chi tiết / Home)</legend>
-          <label style={{ display: 'block', marginBottom: '8px' }}>
+          <label className="admin-form-label">
             <strong>Chọn file ảnh banner</strong>
-            <input type="file" accept="image/*" onChange={handleBannerFileChange} style={{ display: 'block', marginTop: '4px' }} />
+            <input type="file" accept="image/*" onChange={handleBannerFileChange} />
           </label>
-          <label>
+          <label className="admin-form-label">
             Banner URL
-            <input type="text" name="banner_url" value={form.banner_url} onChange={handleChange} placeholder="/uploads/images/..." style={{ display: 'block', width: '100%', padding: '6px', marginTop: '4px' }} />
+            <input type="text" name="banner_url" value={form.banner_url} onChange={handleChange} placeholder="/uploads/images/..." />
           </label>
         </fieldset>
-        <fieldset style={{ border: '1px solid #444', padding: '12px', marginBottom: '8px' }}>
+        <fieldset className="admin-fieldset">
           <legend>Trailer</legend>
-          <label style={{ display: 'block', marginBottom: '8px' }}>
+          <label className="admin-form-label">
             Chọn file từ máy — upload lên server, gán vào Trailer URL
             <input
               type="file"
               accept="video/*,audio/*"
               onChange={handleTrailerFileChange}
             />
-            <span style={{ display: 'block', fontSize: '12px', color: '#888', marginTop: '4px' }}>
+            <span className="admin-fieldset-hint">
               Muốn phim xuất hiện ở banner trang chủ, bắt buộc phải upload file (MP4/MP3…) tại đây.
               Link YouTube chỉ dùng để xem ở trang chi tiết, KHÔNG dùng cho banner.
             </span>
           </label>
-          <label>
+          <label className="admin-form-label">
             Trailer URL (YouTube hoặc đường dẫn đã upload)
             <input
               type="text"
@@ -300,18 +303,18 @@ function AdminAddMoviePage() {
             />
           </label>
         </fieldset>
-        <fieldset style={{ border: '1px solid #444', padding: '12px', marginBottom: '8px' }}>
+        <fieldset className="admin-fieldset">
           <legend>Video phim (video chính)</legend>
-          <label style={{ display: 'block', marginBottom: '8px' }}>
+          <label className="admin-form-label">
             <strong>Chọn file video</strong> — upload lên server, gán vào Video URL
-            <input type="file" accept="video/*" onChange={handleVideoFileChange} style={{ display: 'block', marginTop: '4px' }} />
+            <input type="file" accept="video/*" onChange={handleVideoFileChange} />
           </label>
-          <label>
+          <label className="admin-form-label">
             Video URL (sau khi upload hoặc dán link)
-            <input type="text" name="video_url" value={form.video_url} onChange={handleChange} placeholder="/uploads/videos/..." style={{ display: 'block', width: '100%', padding: '6px', marginTop: '4px' }} />
+            <input type="text" name="video_url" value={form.video_url} onChange={handleChange} placeholder="/uploads/videos/..." />
           </label>
         </fieldset>
-        <label>
+        <label className="admin-form-label">
           Rating (VD: 8.5)
           <input
             type="number"
@@ -321,7 +324,7 @@ function AdminAddMoviePage() {
             onChange={handleChange}
           />
         </label>
-        <label>
+        <label className="admin-form-label">
           Age rating (VD: 13+)
           <input
             type="text"
@@ -330,9 +333,9 @@ function AdminAddMoviePage() {
             onChange={handleChange}
           />
         </label>
-        <label>
+        <label className="admin-form-label">
           Quốc gia sản xuất
-          <select name="country_code" value={form.country_code} onChange={handleChange} style={{ display: 'block', padding: '8px', width: '100%' }}>
+          <select name="country_code" value={form.country_code} onChange={handleChange}>
             <option value="">-- Chọn quốc gia --</option>
             {countries.map((c) => (
               <option key={c.code} value={c.code}>{c.name}</option>
@@ -340,11 +343,11 @@ function AdminAddMoviePage() {
           </select>
         </label>
         {genres.length > 0 && (
-          <fieldset style={{ border: '1px solid #444', padding: '8px' }}>
+          <fieldset className="admin-fieldset">
             <legend>Thể loại</legend>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+            <div className="admin-checkbox-wrap">
               {genres.map((g) => (
-                <label key={g.id} style={{ fontSize: '14px' }}>
+                <label key={g.id} className="admin-label-inline">
                   <input
                     type="checkbox"
                     checked={selectedGenreIds.includes(g.id)}
@@ -362,7 +365,7 @@ function AdminAddMoviePage() {
             </div>
           </fieldset>
         )}
-        <label>
+        <label className="admin-label-inline">
           <input
             type="checkbox"
             name="is_featured"
@@ -371,7 +374,7 @@ function AdminAddMoviePage() {
           />
           Featured (hiển thị nổi bật)
         </label>
-        <button type="submit" style={{ marginTop: '12px' }}>
+        <button type="submit" className="admin-btn-submit">
           Lưu phim
         </button>
       </form>

@@ -414,10 +414,12 @@ function AdminSeriesDetailPage() {
               <th style={{ borderBottom: '1px solid #ccc', padding: '8px', textAlign: 'left' }}>Season</th>
               <th style={{ borderBottom: '1px solid #ccc', padding: '8px', textAlign: 'left' }}>Số tập</th>
               <th style={{ borderBottom: '1px solid #ccc', padding: '8px', textAlign: 'left' }}>Tiêu đề</th>
+              <th style={{ borderBottom: '1px solid #ccc', padding: '8px', textAlign: 'left' }}>Thời lượng</th>
               <th style={{ borderBottom: '1px solid #ccc', padding: '8px', textAlign: 'left' }}>Ảnh bìa</th>
               <th style={{ borderBottom: '1px solid #ccc', padding: '8px', textAlign: 'left' }}>Video</th>
               <th style={{ borderBottom: '1px solid #ccc', padding: '8px', textAlign: 'left' }}>Upload video</th>
               <th style={{ borderBottom: '1px solid #ccc', padding: '8px', textAlign: 'left' }}>Upload ảnh</th>
+              <th style={{ borderBottom: '1px solid #ccc', padding: '8px', textAlign: 'left' }}>Thao tác</th>
             </tr>
           </thead>
           <tbody>
@@ -427,6 +429,7 @@ function AdminSeriesDetailPage() {
                 <td style={{ padding: '8px', borderBottom: '1px solid #eee' }}>{ep.season_id || '-'}</td>
                 <td style={{ padding: '8px', borderBottom: '1px solid #eee' }}>{ep.episode_number || '-'}</td>
                 <td style={{ padding: '8px', borderBottom: '1px solid #eee' }}>{ep.title}</td>
+                <td style={{ padding: '8px', borderBottom: '1px solid #eee' }}>{ep.duration_minutes != null ? `${ep.duration_minutes} phút` : '-'}</td>
                 <td style={{ padding: '8px', borderBottom: '1px solid #eee' }}>
                   {ep.thumbnail_url ? (
                     <img
@@ -454,6 +457,9 @@ function AdminSeriesDetailPage() {
                     accept="image/*"
                     onChange={(e) => handleUploadEpisodeThumbnail(ep.id, e.target.files[0])}
                   />
+                </td>
+                <td style={{ padding: '8px', borderBottom: '1px solid #eee' }}>
+                  <Link to={`/admin/series/${id}/episode/${ep.id}/edit`} style={{ padding: '6px 12px', background: '#e50914', color: '#fff', textDecoration: 'none', borderRadius: '4px', fontSize: '13px' }}>Sửa</Link>
                 </td>
               </tr>
             ))}

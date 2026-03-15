@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { API_BASE, getToken } from '../apis/client';
+import '../styles/pages/admin-common.css';
 
 function AdminSeriesListPage() {
   const [series, setSeries] = useState([]);
@@ -12,16 +13,28 @@ function AdminSeriesListPage() {
   const [newThumbnailUrl, setNewThumbnailUrl] = useState('');
   const [newBannerUrl, setNewBannerUrl] = useState('');
   const [newDescription, setNewDescription] = useState('');
+  const [newCountryCode, setNewCountryCode] = useState('');
+  const [newGenreIds, setNewGenreIds] = useState([]);
+  const [countries, setCountries] = useState([]);
+  const [genres, setGenres] = useState([]);
   const [uploadingThumb, setUploadingThumb] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch(`${API_BASE}/api/series`);
-        if (!res.ok) throw new Error('Không tải được danh sách series');
-        const data = await res.json();
+        const [seriesRes, countriesRes, genresRes] = await Promise.all([
+          fetch(`${API_BASE}/api/series`),
+          fetch(`${API_BASE}/api/countries`),
+          fetch(`${API_BASE}/api/genres`),
+        ]);
+        if (!seriesRes.ok) throw new Error('Không tải được danh sách series');
+        const data = await seriesRes.json();
         setSeries(Array.isArray(data) ? data : []);
+        const cData = countriesRes.ok ? await countriesRes.json() : [];
+        setCountries(Array.isArray(cData) ? cData : []);
+        const gData = genresRes.ok ? await genresRes.json() : [];
+        setGenres(Array.isArray(gData) ? gData : []);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -104,9 +117,10 @@ function AdminSeriesListPage() {
   }
 
   return (
-    <div style={{ padding: '24px' }}>
+    <div className="admin-page">
       <h1>Quản lý phim bộ (Series – Admin)</h1>
       <form
+        className="admin-form-row"
         onSubmit={async (e) => {
           e.preventDefault();
           setError('');
@@ -129,29 +143,45 @@ function AdminSeriesListPage() {
                 banner_url: newBannerUrl || null,
                 age_rating: newAgeRating || null,
                 is_featured: newFeatured,
+                country_code: newCountryCode || null,
               }),
             });
             const data = await res.json().catch(() => ({}));
             if (!res.ok) throw new Error(data.message || 'Tạo series thất bại');
+            if (data.id && newGenreIds.length > 0) {
+              const genRes = await fetch(`${API_BASE}/api/series/${data.id}/genres`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ genre_ids: newGenreIds }),
+              });
+              if (!genRes.ok) {
+                const gErr = await genRes.json().catch(() => ({}));
+                throw new Error(gErr.message || 'Gán thể loại thất bại');
+              }
+            }
             setSeries((prev) => [...prev, data]);
             setNewTitle('');
             setNewDescription('');
             setNewThumbnailUrl('');
             setNewBannerUrl('');
             setNewAgeRating('');
+            setNewCountryCode('');
+            setNewGenreIds([]);
             setNewFeatured(false);
           } catch (err) {
             setError(err.message);
           }
         }}
-        style={{ display: 'flex', gap: '8px', marginBottom: '16px', alignItems: 'center', flexWrap: 'wrap' }}
       >
         <input
           type="text"
           placeholder="Tên series..."
           value={newTitle}
           onChange={(e) => setNewTitle(e.target.value)}
-          style={{ padding: '6px 8px', minWidth: '200px' }}
+          className="admin-input"
           required
         />
         <input
@@ -159,7 +189,7 @@ function AdminSeriesListPage() {
           placeholder="Ảnh bìa (thumbnail URL)"
           value={newThumbnailUrl}
           onChange={(e) => setNewThumbnailUrl(e.target.value)}
-          style={{ padding: '6px 8px', minWidth: '220px' }}
+          className="admin-input admin-input--wide"
         />
         <input
           type="file"
@@ -171,7 +201,7 @@ function AdminSeriesListPage() {
           placeholder="Banner ngang URL (dùng cho banner Home)"
           value={newBannerUrl}
           onChange={(e) => setNewBannerUrl(e.target.value)}
-          style={{ padding: '6px 8px', minWidth: '220px' }}
+          className="admin-input admin-input--wide"
         />
         <input
           type="file"
@@ -183,70 +213,99 @@ function AdminSeriesListPage() {
           placeholder="Mô tả ngắn"
           value={newDescription}
           onChange={(e) => setNewDescription(e.target.value)}
-          style={{ padding: '6px 8px', minWidth: '220px' }}
+          className="admin-input admin-input--wide"
         />
         <input
           type="text"
           placeholder="Age rating (vd: 13+)"
           value={newAgeRating}
           onChange={(e) => setNewAgeRating(e.target.value)}
-          style={{ padding: '6px 8px', width: '120px' }}
+          className="admin-input admin-input--short"
         />
-        <label style={{ fontSize: '14px' }}>
+        <label className="admin-form-label" style={{ display: 'block', marginTop: '8px' }}>
+          Quốc gia sản xuất
+          <select
+            value={newCountryCode}
+            onChange={(e) => setNewCountryCode(e.target.value)}
+            className="admin-input"
+            style={{ display: 'block', marginTop: '4px', padding: '8px', minWidth: '200px' }}
+          >
+            <option value="">-- Chọn quốc gia --</option>
+            {countries.map((c) => (
+              <option key={c.code} value={c.code}>{c.name}</option>
+            ))}
+          </select>
+        </label>
+        <label className="admin-form-label" style={{ display: 'block', marginTop: '8px' }}>
+          Thể loại
+          <select
+            multiple
+            value={newGenreIds.map(String)}
+            onChange={(e) => setNewGenreIds(Array.from(e.target.selectedOptions, (o) => Number(o.value)))}
+            className="admin-input"
+            style={{ display: 'block', marginTop: '4px', padding: '8px', minWidth: '200px', minHeight: '80px' }}
+            title="Giữ Ctrl để chọn nhiều"
+          >
+            {genres.map((g) => (
+              <option key={g.id} value={g.id}>{g.name}</option>
+            ))}
+          </select>
+          <span style={{ fontSize: 12, color: '#888' }}>Giữ Ctrl (Cmd) để chọn nhiều thể loại</span>
+        </label>
+        <label className="admin-label-inline">
           <input
             type="checkbox"
             checked={newFeatured}
             onChange={(e) => setNewFeatured(e.target.checked)}
-            style={{ marginRight: '4px' }}
           />
           Featured
         </label>
-        <button type="submit" style={{ padding: '6px 12px', cursor: 'pointer' }}>
+        <button type="submit" className="admin-btn-submit">
           + Thêm series mới
         </button>
-        {uploadingThumb && <span style={{ fontSize: '12px' }}>Đang upload ảnh bìa...</span>}
+        {uploadingThumb && <span className="admin-upload-hint">Đang upload ảnh bìa...</span>}
       </form>
 
       {loading && <p>Đang tải danh sách series...</p>}
-      {error && <p style={{ color: 'red' }}>{error}</p>}
+      {error && <p className="admin-msg-error">{error}</p>}
 
       {!loading && !error && series.length === 0 && <p>Chưa có series nào.</p>}
 
       {!loading && series.length > 0 && (
-        <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '8px' }}>
+        <table className="admin-table">
           <thead>
             <tr>
-              <th style={{ borderBottom: '1px solid #ccc', textAlign: 'left', padding: '8px' }}>ID</th>
-              <th style={{ borderBottom: '1px solid #ccc', textAlign: 'left', padding: '8px' }}>Ảnh bìa</th>
-              <th style={{ borderBottom: '1px solid #ccc', textAlign: 'left', padding: '8px' }}>Tiêu đề</th>
-              <th style={{ borderBottom: '1px solid #ccc', textAlign: 'left', padding: '8px' }}>Age</th>
-              <th style={{ borderBottom: '1px solid #ccc', textAlign: 'left', padding: '8px' }}>Featured</th>
-              <th style={{ borderBottom: '1px solid #ccc', textAlign: 'left', padding: '8px' }}>Hành động</th>
+              <th>ID</th>
+              <th>Ảnh bìa</th>
+              <th>Tiêu đề</th>
+              <th>Age</th>
+              <th>Featured</th>
+              <th>Hành động</th>
             </tr>
           </thead>
           <tbody>
             {series.map((s) => (
               <tr key={s.id}>
-                <td style={{ padding: '8px', borderBottom: '1px solid #eee' }}>{s.id}</td>
-                <td style={{ padding: '8px', borderBottom: '1px solid #eee' }}>
+                <td>{s.id}</td>
+                <td>
                   {s.thumbnail_url ? (
                     <img
                       src={`${API_BASE}${s.thumbnail_url}`}
-                      alt={s.title}
-                      style={{ width: '70px', height: 'auto', borderRadius: '4px' }}
+                      alt=""
+                      className="admin-thumb"
                     />
                   ) : (
-                    <span style={{ color: '#888' }}>—</span>
+                    <span className="admin-td-muted">—</span>
                   )}
                 </td>
-                <td style={{ padding: '8px', borderBottom: '1px solid #eee' }}>{s.title}</td>
-                <td style={{ padding: '8px', borderBottom: '1px solid #eee' }}>{s.age_rating || '-'}</td>
-                <td style={{ padding: '8px', borderBottom: '1px solid #eee' }}>{s.is_featured ? '✓' : ''}</td>
-                <td style={{ padding: '8px', borderBottom: '1px solid #eee' }}>
-                  <Link to={`/series/${s.id}`} style={{ marginRight: '8px' }}>Xem</Link>
-                  <button type="button" onClick={() => navigate(`/admin/series/${s.id}/edit`)} style={{ marginRight: '8px', cursor: 'pointer' }}>Sửa</button>
-                  <button type="button" onClick={() => navigate(`/admin/series/${s.id}`)} style={{ marginRight: '8px', cursor: 'pointer' }}>Quản lý tập</button>
-                  <button type="button" onClick={() => handleDelete(s.id)} style={{ color: 'red', border: 'none', background: 'none', cursor: 'pointer' }}>Xoá</button>
+                <td>{s.title}</td>
+                <td>{s.age_rating || '-'}</td>
+                <td>{s.is_featured ? '✓' : ''}</td>
+                <td>
+                  <Link to={`/series/${s.id}`} className="admin-btn-link">Xem</Link>
+                  <button type="button" onClick={() => navigate(`/admin/series/${s.id}/edit`)} className="admin-btn-link">Sửa</button>
+                  <button type="button" onClick={() => navigate(`/admin/series/${s.id}`)} className="admin-btn-link">Quản lý tập</button>
+                  <button type="button" onClick={() => handleDelete(s.id)} className="admin-btn-danger">Xoá</button>
                 </td>
               </tr>
             ))}

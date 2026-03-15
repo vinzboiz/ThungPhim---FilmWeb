@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api, API_BASE, getToken } from '../apis/client';
+import '../styles/pages/admin-common.css';
 
 function AdminGenresPage() {
   const [genres, setGenres] = useState([]);
@@ -101,28 +102,25 @@ function AdminGenresPage() {
   }
 
   return (
-    <div style={{ padding: '24px', maxWidth: '600px', margin: '0 auto' }}>
+    <div className="admin-page admin-page--narrow">
       <h1>Quản lý thể loại (Admin)</h1>
-      {error && <p style={{ color: 'red' }}>{error}</p>}
+      {error && <p className="admin-msg-error">{error}</p>}
 
-      <form
-        onSubmit={handleSubmit}
-        style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}
-      >
+      <form onSubmit={handleSubmit} className="admin-form-col">
         <input
           type="text"
           placeholder="Tên thể loại..."
           value={name}
           onChange={(e) => setName(e.target.value)}
-          style={{ padding: '8px' }}
+          className="admin-input"
         />
         <textarea
           placeholder="Mô tả (tuỳ chọn)..."
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          style={{ padding: '8px', minHeight: '60px' }}
+          className="admin-input"
         />
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        <div className="admin-form-col">
           <input
             type="file"
             accept="image/*"
@@ -133,12 +131,12 @@ function AdminGenresPage() {
             placeholder="Ảnh bìa (thumbnail URL)..."
             value={thumbnailUrl}
             onChange={(e) => setThumbnailUrl(e.target.value)}
-            style={{ padding: '8px' }}
+            className="admin-input"
           />
-          {uploading && <span style={{ fontSize: '12px' }}>Đang upload ảnh...</span>}
+          {uploading && <span className="admin-upload-hint">Đang upload ảnh...</span>}
         </div>
-        <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
-          <button type="submit" disabled={!name.trim()} style={{ padding: '8px 16px' }}>
+        <div className="admin-form-actions">
+          <button type="submit" disabled={!name.trim()}>
             {editId ? 'Cập nhật' : 'Thêm mới'}
           </button>
           {editId && (
@@ -150,7 +148,6 @@ function AdminGenresPage() {
                 setDescription('');
                 setThumbnailUrl('');
               }}
-              style={{ padding: '8px 12px' }}
             >
               Hủy
             </button>
@@ -162,48 +159,40 @@ function AdminGenresPage() {
       {!loading && genres.length === 0 && <p>Chưa có thể loại nào.</p>}
 
       {!loading && genres.length > 0 && (
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <table className="admin-table">
           <thead>
             <tr>
-              <th style={{ borderBottom: '1px solid #ccc', textAlign: 'left', padding: '8px' }}>ID</th>
-              <th style={{ borderBottom: '1px solid #ccc', textAlign: 'left', padding: '8px' }}>Tên</th>
-              <th style={{ borderBottom: '1px solid #ccc', textAlign: 'left', padding: '8px' }}>Mô tả</th>
-              <th style={{ borderBottom: '1px solid #ccc', textAlign: 'left', padding: '8px' }}>Ảnh bìa</th>
-              <th style={{ borderBottom: '1px solid #ccc', textAlign: 'left', padding: '8px' }}>Hành động</th>
+              <th>ID</th>
+              <th>Tên</th>
+              <th>Mô tả</th>
+              <th>Ảnh bìa</th>
+              <th>Hành động</th>
             </tr>
           </thead>
           <tbody>
             {genres.map((g) => (
               <tr key={g.id}>
-                <td style={{ padding: '8px', borderBottom: '1px solid #eee' }}>{g.id}</td>
-                <td style={{ padding: '8px', borderBottom: '1px solid #eee' }}>{g.name}</td>
-                <td style={{ padding: '8px', borderBottom: '1px solid #eee', fontSize: '13px' }}>
-                  {g.description || <span style={{ color: '#888' }}>—</span>}
+                <td>{g.id}</td>
+                <td>{g.name}</td>
+                <td className="admin-td-muted">
+                  {g.description || <span>—</span>}
                 </td>
-                <td style={{ padding: '8px', borderBottom: '1px solid #eee' }}>
+                <td>
                   {g.thumbnail_url ? (
                     <img
                       src={`${API_BASE}${g.thumbnail_url}`}
                       alt={g.name}
-                      style={{ width: '60px', height: 'auto', borderRadius: '4px' }}
+                      className="admin-thumb-sm"
                     />
                   ) : (
-                    <span style={{ color: '#888' }}>—</span>
+                    <span className="admin-td-muted">—</span>
                   )}
                 </td>
-                <td style={{ padding: '8px', borderBottom: '1px solid #eee' }}>
-                  <button
-                    type="button"
-                    onClick={() => startEdit(g)}
-                    style={{ marginRight: '8px', cursor: 'pointer' }}
-                  >
+                <td>
+                  <button type="button" onClick={() => startEdit(g)} className="admin-btn-link">
                     Sửa
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(g.id)}
-                    style={{ color: 'red', border: 'none', background: 'none', cursor: 'pointer' }}
-                  >
+                  <button type="button" onClick={() => handleDelete(g.id)} className="admin-btn-danger">
                     Xoá
                   </button>
                 </td>

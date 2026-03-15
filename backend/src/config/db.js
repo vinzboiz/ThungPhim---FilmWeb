@@ -40,6 +40,40 @@ async function testConnection() {
     await pool.query('ALTER TABLE series ADD COLUMN release_year INT NULL').catch((e) => {
       if (!/Duplicate column/.test(e.message)) console.warn('series release_year:', e.message);
     });
+    await pool.query('ALTER TABLE series ADD COLUMN country_code VARCHAR(10) NULL').catch((e) => {
+      if (!/Duplicate column/.test(e.message)) console.warn('series country_code:', e.message);
+    });
+    await pool.query('ALTER TABLE series ADD COLUMN duration_minutes INT NULL').catch((e) => {
+      if (!/Duplicate column/.test(e.message)) console.warn('series duration_minutes:', e.message);
+    });
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS series_genres (
+        series_id INT NOT NULL,
+        genre_id INT NOT NULL,
+        PRIMARY KEY (series_id, genre_id),
+        KEY idx_series_genres_series (series_id),
+        KEY idx_series_genres_genre (genre_id)
+      )
+    `).catch((e) => console.warn('series_genres table init:', e.message));
+    await pool.query('ALTER TABLE movies ADD COLUMN title_normalized VARCHAR(500) NULL').catch((e) => {
+      if (!/Duplicate column/.test(e.message)) console.warn('movies title_normalized:', e.message);
+    });
+    await pool.query('ALTER TABLE series ADD COLUMN title_normalized VARCHAR(500) NULL').catch((e) => {
+      if (!/Duplicate column/.test(e.message)) console.warn('series title_normalized:', e.message);
+    });
+    await pool.query('ALTER TABLE persons ADD COLUMN name_normalized VARCHAR(255) NULL').catch((e) => {
+      if (!/Duplicate column/.test(e.message)) console.warn('persons name_normalized:', e.message);
+    });
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS content_likes (
+        profile_id INT NOT NULL,
+        content_type VARCHAR(10) NOT NULL,
+        content_id INT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (profile_id, content_type, content_id),
+        KEY idx_content_likes_content (content_type, content_id)
+      )
+    `).catch((e) => console.warn('content_likes table init:', e.message));
     await pool.query('ALTER TABLE reviews ADD COLUMN series_id INT NULL').catch((e) => {
       if (!/Duplicate column/.test(e.message)) console.warn('reviews series_id:', e.message);
     });
@@ -67,6 +101,26 @@ async function testConnection() {
     await pool.query('ALTER TABLE reviews DROP INDEX uniq_review_user_series').catch((e) => {
       if (!/check that column|Unknown key/.test(e.message)) console.warn('drop uniq_review_user_series:', e.message);
     });
+    // Backfill title_normalized cho bản ghi cũ (chạy bất đồng bộ, không chặn startup)
+    (async function backfillTitleNormalized() {
+      try {
+        const { normalize } = require('../utils/normalize');
+        const [movies] = await pool.query('SELECT id, title FROM movies WHERE title_normalized IS NULL AND title IS NOT NULL');
+        for (const row of movies || []) {
+          await pool.query('UPDATE movies SET title_normalized = ? WHERE id = ?', [normalize(row.title), row.id]);
+        }
+        const [series] = await pool.query('SELECT id, title FROM series WHERE title_normalized IS NULL AND title IS NOT NULL');
+        for (const row of series || []) {
+          await pool.query('UPDATE series SET title_normalized = ? WHERE id = ?', [normalize(row.title), row.id]);
+        }
+        const [persons] = await pool.query('SELECT id, name FROM persons WHERE name_normalized IS NULL AND name IS NOT NULL');
+        for (const row of persons || []) {
+          await pool.query('UPDATE persons SET name_normalized = ? WHERE id = ?', [normalize(row.name), row.id]);
+        }
+      } catch (e) {
+        console.warn('backfill title_normalized:', e.message);
+      }
+    })();
   } catch (err) {
     console.error('MySQL connection error:', err.message);
   }

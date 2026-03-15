@@ -1,7 +1,9 @@
 const { prisma } = require('../config/prisma');
+const { pool } = require('../config/db');
+const { normalize, escapeLike } = require('../utils/normalize');
 
 async function listMovies(req, res) {
-  const { genre_id, profile_id } = req.query;
+  const { genre_id, profile_id, year_from, year_to, country_code, limit } = req.query;
   try {
     const where = {};
 
@@ -9,6 +11,17 @@ async function listMovies(req, res) {
       where.movie_genres = {
         some: { genre_id: Number(genre_id) },
       };
+    }
+
+    const yFrom = year_from != null && year_from !== '' ? Number(year_from) : null;
+    const yTo = year_to != null && year_to !== '' ? Number(year_to) : null;
+    if (yFrom != null && !Number.isNaN(yFrom) || yTo != null && !Number.isNaN(yTo)) {
+      where.release_year = {};
+      if (yFrom != null && !Number.isNaN(yFrom)) where.release_year.gte = yFrom;
+      if (yTo != null && !Number.isNaN(yTo)) where.release_year.lte = yTo;
+    }
+    if (country_code != null && country_code !== '') {
+      where.country_code = String(country_code).trim();
     }
 
     // Kids mode / max_maturity_rating filter (optional)
@@ -25,10 +38,12 @@ async function listMovies(req, res) {
       }
     }
 
+    const take = Math.min(Number(limit) || 50, 100);
+
     const movies = await prisma.movies.findMany({
       where,
       orderBy: { id: 'desc' },
-      take: 50,
+      take,
       select: {
         id: true,
         title: true,
@@ -38,6 +53,9 @@ async function listMovies(req, res) {
         banner_url: true,
         age_rating: true,
         is_featured: true,
+        release_year: true,
+        country_code: true,
+        rating: true,
         created_at: true,
       },
     });
@@ -56,6 +74,9 @@ async function getMovieById(req, res) {
   const { id } = req.params;
   try {
     const movieId = Number(id);
+    if (!Number.isInteger(movieId) || movieId <= 0) {
+      return res.status(400).json({ message: 'movie id không hợp lệ' });
+    }
     const movie = await prisma.movies.findUnique({
       where: { id: movieId },
     });
@@ -64,19 +85,26 @@ async function getMovieById(req, res) {
       return res.status(404).json({ message: 'Movie not found' });
     }
 
-    const cast = await prisma.cast.findMany({
-      where: { movie_id: movieId },
-      select: {
-        role: true,
-        person: {
-          select: {
-            id: true,
-            name: true,
-            avatar_url: true,
+    const [cast, genreRows, countRows] = await Promise.all([
+      prisma.cast.findMany({
+        where: { movie_id: movieId },
+        select: {
+          role: true,
+          person: {
+            select: {
+              id: true,
+              name: true,
+              avatar_url: true,
+            },
           },
         },
-      },
-    });
+      }),
+      prisma.movie_genres.findMany({
+        where: { movie_id: movieId },
+        select: { genre: { select: { id: true, name: true } } },
+      }),
+      pool.query('SELECT COUNT(*) AS cnt FROM reviews WHERE movie_id = ?', [movieId]),
+    ]);
 
     const movieWithCast = {
       ...movie,
@@ -86,6 +114,8 @@ async function getMovieById(req, res) {
         avatar_url: c.person.avatar_url,
         role: c.role,
       })),
+      genres: (genreRows || []).map((r) => r.genre),
+      review_count: Number(countRows[0]?.[0]?.cnt ?? 0),
     };
 
     res.json(movieWithCast);
@@ -98,39 +128,56 @@ async function getMovieById(req, res) {
   }
 }
 
-async function listTrendingMovies(req, res) {
-  const { profile_id } = req.query;
+/** Top 10 phim + series có rating cao nhất. Query: type=movie|series, featured=1 */
+async function listTopRatingMovies(req, res) {
   try {
-    const where = {};
-
-    if (profile_id) {
-      const profile = await prisma.profiles.findUnique({
-        where: { id: Number(profile_id) },
-        select: { max_maturity_rating: true },
-      });
-      if (profile?.max_maturity_rating) {
-        where.OR = [
-          { age_rating: null },
-          { age_rating: { lte: profile.max_maturity_rating } },
-        ];
-      }
+    const limit = Math.min(Number(req.query.limit) || 10, 20);
+    const type = (req.query.type || '').toLowerCase();
+    const featured = req.query.featured === '1' || req.query.featured === 'true';
+    const feat = featured ? ' AND is_featured = 1' : '';
+    let sql;
+    if (type === 'movie') {
+      sql = `SELECT id, title, short_intro, thumbnail_url, banner_url, age_rating, release_year, country_code, rating, 'movie' AS type
+        FROM movies WHERE rating IS NOT NULL AND rating > 0${feat} ORDER BY rating DESC, id DESC LIMIT ?`;
+    } else if (type === 'series') {
+      sql = `SELECT id, title, NULL AS short_intro, thumbnail_url, banner_url, age_rating, release_year, country_code, rating, 'series' AS type
+        FROM series WHERE rating IS NOT NULL AND rating > 0${feat} ORDER BY rating DESC, id DESC LIMIT ?`;
+    } else {
+      sql = `(SELECT id, title, short_intro, thumbnail_url, banner_url, age_rating, release_year, country_code, rating, 'movie' AS type
+        FROM movies WHERE rating IS NOT NULL AND rating > 0${feat})
+       UNION ALL
+       (SELECT id, title, NULL AS short_intro, thumbnail_url, banner_url, age_rating, release_year, country_code, rating, 'series' AS type
+        FROM series WHERE rating IS NOT NULL AND rating > 0${feat})
+       ORDER BY rating DESC, id DESC LIMIT ?`;
     }
+    const [rows] = await pool.query(sql, [limit]);
+    res.json(rows || []);
+  } catch (err) {
+    console.error('listTopRatingMovies error:', err);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+}
 
-    const movies = await prisma.movies.findMany({
-      where,
-      orderBy: { id: 'desc' },
-      take: 20,
-      select: {
-        id: true,
-        title: true,
-        short_intro: true,
-        thumbnail_url: true,
-        banner_url: true,
-        age_rating: true,
-      },
-    });
-
-    res.json(movies);
+/** Phim mới / trending. Query: type=movie|series, featured=1 */
+async function listTrendingMovies(req, res) {
+  try {
+    const limit = Math.min(Number(req.query.limit) || 20, 50);
+    const type = (req.query.type || '').toLowerCase();
+    const featured = req.query.featured === '1' || req.query.featured === 'true';
+    const feat = featured ? ' AND is_featured = 1' : '';
+    let sql;
+    if (type === 'movie') {
+      sql = `SELECT id, title, short_intro, thumbnail_url, banner_url, age_rating, release_year, country_code, rating, 'movie' AS type FROM movies WHERE 1=1${feat} ORDER BY id DESC LIMIT ?`;
+    } else if (type === 'series') {
+      sql = `SELECT id, title, NULL AS short_intro, thumbnail_url, banner_url, age_rating, release_year, country_code, rating, 'series' AS type FROM series WHERE 1=1${feat} ORDER BY id DESC LIMIT ?`;
+    } else {
+      sql = `(SELECT id, title, short_intro, thumbnail_url, banner_url, age_rating, release_year, country_code, rating, 'movie' AS type FROM movies WHERE 1=1${feat})
+       UNION ALL
+       (SELECT id, title, NULL AS short_intro, thumbnail_url, banner_url, age_rating, release_year, country_code, rating, 'series' AS type FROM series WHERE 1=1${feat})
+       ORDER BY id DESC LIMIT ?`;
+    }
+    const [rows] = await pool.query(sql, [limit]);
+    res.json(rows || []);
   } catch (err) {
     console.error('listTrendingMovies error:', err);
     res.status(500).json({
@@ -141,31 +188,26 @@ async function listTrendingMovies(req, res) {
 }
 
 async function searchMovies(req, res) {
-  const { q } = req.query;
-  if (!q) {
-    return res.status(400).json({ message: 'Missing query parameter q' });
+  const raw = (req.query.q ?? '').trim();
+  if (!raw) {
+    return res.json([]);
+  }
+  const normalized = normalize(raw);
+  if (!normalized) {
+    return res.json([]);
   }
   try {
-    const movies = await prisma.movies.findMany({
-      where: {
-        title: {
-          contains: q,
-          mode: 'insensitive',
-        },
-      },
-      orderBy: { id: 'desc' },
-      take: 50,
-      select: {
-        id: true,
-        title: true,
-        short_intro: true,
-        description: true,
-        thumbnail_url: true,
-        banner_url: true,
-        age_rating: true,
-      },
-    });
-    res.json(movies);
+    const likeNorm = `%${escapeLike(normalized)}%`;
+    const likeRaw = `%${escapeLike(raw)}%`;
+    const [rows] = await pool.query(
+      `SELECT id, title, short_intro, description, thumbnail_url, banner_url, age_rating
+       FROM movies
+       WHERE (title_normalized IS NOT NULL AND title_normalized LIKE ?)
+          OR (title_normalized IS NULL AND title LIKE ?)
+       ORDER BY id DESC LIMIT 50`,
+      [likeNorm, likeRaw]
+    );
+    res.json(rows || []);
   } catch (err) {
     console.error('searchMovies error:', err);
     res.status(500).json({
@@ -214,6 +256,7 @@ async function createMovie(req, res) {
         is_featured: !!is_featured,
       },
     });
+    await pool.query('UPDATE movies SET title_normalized = ? WHERE id = ?', [normalize(title), movie.id]).catch(() => {});
 
     res.status(201).json(movie);
   } catch (err) {
@@ -273,6 +316,9 @@ async function updateMovie(req, res) {
           typeof is_featured === 'boolean' ? !!is_featured : undefined,
       },
     });
+    if (title != null && title !== undefined) {
+      await pool.query('UPDATE movies SET title_normalized = ? WHERE id = ?', [normalize(title), movieId]).catch(() => {});
+    }
 
     res.json(updated);
   } catch (err) {
@@ -309,44 +355,127 @@ async function deleteMovie(req, res) {
   }
 }
 
-// Tăng lượt like cho phim (dùng cho popup banner / trang chi tiết)
+// Like phim: mỗi profile chỉ like 1 lần (dùng content_likes)
 async function likeMovie(req, res) {
   const { id } = req.params;
   const movieId = Number(id);
+  const profileId = req.body?.profile_id != null ? Number(req.body.profile_id) : null;
   if (!Number.isInteger(movieId) || movieId <= 0) {
     return res.status(400).json({ message: 'movieId không hợp lệ' });
   }
+  if (!profileId) {
+    return res.status(400).json({ message: 'profile_id là bắt buộc' });
+  }
   try {
-    const updated = await prisma.movies.update({
-      where: { id: movieId },
-      data: {
-        like_count: {
-          increment: 1,
-        },
-      },
-      select: {
-        id: true,
-        like_count: true,
-      },
+    const [existing] = await pool.query(
+      'SELECT 1 FROM content_likes WHERE profile_id = ? AND content_type = ? AND content_id = ?',
+      [profileId, 'movie', movieId]
+    );
+    if (existing && existing.length > 0) {
+      const [row] = await pool.query('SELECT id, like_count FROM movies WHERE id = ?', [movieId]);
+      return res.json({
+        id: movieId,
+        like_count: Number(row[0]?.like_count) || 0,
+        user_has_liked: true,
+      });
+    }
+    await pool.query(
+      'INSERT IGNORE INTO content_likes (profile_id, content_type, content_id) VALUES (?, ?, ?)',
+      [profileId, 'movie', movieId]
+    );
+    const [inserted] = await pool.query('SELECT 1 FROM content_likes WHERE profile_id = ? AND content_type = ? AND content_id = ?', [profileId, 'movie', movieId]);
+    if (inserted && inserted.length > 0) {
+      await pool.query('UPDATE movies SET like_count = IFNULL(like_count, 0) + 1 WHERE id = ?', [movieId]);
+    }
+    const [rows] = await pool.query('SELECT id, like_count FROM movies WHERE id = ?', [movieId]);
+    res.json({
+      id: rows[0]?.id ?? movieId,
+      like_count: Number(rows[0]?.like_count) || 0,
+      user_has_liked: true,
     });
-    res.json(updated);
   } catch (err) {
     console.error('likeMovie error:', err);
     res.status(500).json({ message: 'Internal server error' });
   }
 }
 
-// Gán genres cho movie
+// Bỏ like phim (toggle off)
+async function unlikeMovie(req, res) {
+  const movieId = Number(req.params.id);
+  const profileId = req.query.profile_id != null ? Number(req.query.profile_id) : null;
+  if (!Number.isInteger(movieId) || movieId <= 0) {
+    return res.status(400).json({ message: 'movieId không hợp lệ' });
+  }
+  if (!profileId) {
+    return res.status(400).json({ message: 'profile_id là bắt buộc' });
+  }
+  try {
+    const [deleted] = await pool.query(
+      'DELETE FROM content_likes WHERE profile_id = ? AND content_type = ? AND content_id = ?',
+      [profileId, 'movie', movieId]
+    );
+    if (deleted && deleted.affectedRows > 0) {
+      await pool.query('UPDATE movies SET like_count = GREATEST(IFNULL(like_count, 0) - 1, 0) WHERE id = ?', [movieId]);
+    }
+    const [rows] = await pool.query('SELECT id, like_count FROM movies WHERE id = ?', [movieId]);
+    res.json({
+      id: rows[0]?.id ?? movieId,
+      like_count: Number(rows[0]?.like_count) || 0,
+      user_has_liked: false,
+    });
+  } catch (err) {
+    console.error('unlikeMovie error:', err);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
+// Trạng thái like phim cho profile (để disable nút sau khi đã like)
+async function getMovieLikeStatus(req, res) {
+  const movieId = Number(req.params.id);
+  const profileId = req.query.profile_id != null ? Number(req.query.profile_id) : null;
+  if (!Number.isInteger(movieId) || movieId <= 0) {
+    return res.status(400).json({ message: 'movie id không hợp lệ' });
+  }
+  try {
+    const [movie] = await pool.query('SELECT like_count FROM movies WHERE id = ?', [movieId]);
+    const likeCount = movie.length ? Number(movie[0].like_count) || 0 : 0;
+    let userHasLiked = false;
+    if (profileId) {
+      const [liked] = await pool.query(
+        'SELECT 1 FROM content_likes WHERE profile_id = ? AND content_type = ? AND content_id = ?',
+        [profileId, 'movie', movieId]
+      );
+      userHasLiked = liked && liked.length > 0;
+    }
+    res.json({ like_count: likeCount, user_has_liked: userHasLiked });
+  } catch (err) {
+    console.error('getMovieLikeStatus error:', err);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
+// Gán genres cho movie (1 phim có thể có nhiều thể loại)
 async function setMovieGenres(req, res) {
   const { id } = req.params;
-  const { genre_ids } = req.body; // mảng id
+  let { genre_ids } = req.body;
 
+  // Hỗ trợ cả mảng hoặc chuỗi "1,2,3"
   if (!Array.isArray(genre_ids)) {
-    return res.status(400).json({ message: 'genre_ids phải là một mảng id' });
+    if (typeof genre_ids === 'string') {
+      genre_ids = genre_ids.split(',').map((s) => s.trim()).filter(Boolean);
+    } else {
+      return res.status(400).json({ message: 'genre_ids phải là một mảng id (ví dụ: [1, 2, 3])' });
+    }
   }
+
+  const validIds = [...new Set(genre_ids.map((g) => Number(g)).filter((g) => g > 0 && Number.isInteger(g)))];
 
   try {
     const movieId = Number(id);
+    if (!movieId || !Number.isInteger(movieId)) {
+      return res.status(400).json({ message: 'Movie ID không hợp lệ' });
+    }
+
     const existing = await prisma.movies.findUnique({
       where: { id: movieId },
       select: { id: true },
@@ -359,10 +488,10 @@ async function setMovieGenres(req, res) {
       where: { movie_id: movieId },
     });
 
-    if (genre_ids.length > 0) {
-      const data = genre_ids.map((gid) => ({
+    if (validIds.length > 0) {
+      const data = validIds.map((genre_id) => ({
         movie_id: movieId,
-        genre_id: Number(gid),
+        genre_id,
       }));
       await prisma.movie_genres.createMany({ data, skipDuplicates: true });
     }
@@ -370,7 +499,7 @@ async function setMovieGenres(req, res) {
     res.json({ message: 'Đã cập nhật thể loại cho phim' });
   } catch (err) {
     console.error('setMovieGenres error:', err);
-    res.status(500).json({ message: 'Internal server error' });
+    res.status(500).json({ message: err.message || 'Internal server error' });
   }
 }
 
@@ -471,6 +600,9 @@ async function getMovieGenres(req, res) {
   const { id } = req.params;
   try {
     const movieId = Number(id);
+    if (!Number.isInteger(movieId) || movieId <= 0) {
+      return res.status(400).json({ message: 'movie id không hợp lệ' });
+    }
     const rows = await prisma.movie_genres.findMany({
       where: { movie_id: movieId },
       select: {
@@ -490,9 +622,77 @@ async function getMovieGenres(req, res) {
   }
 }
 
+/** Gợi ý: phim + series trùng bất kỳ thể loại nào của phim; nếu không đủ thì bổ sung nội dung khác (fallback). */
+async function getSuggestions(req, res) {
+  const { id } = req.params;
+  const limit = Math.min(Number(req.query.limit) || 10, 20);
+  try {
+    const movieId = Number(id);
+    const genreRows = await prisma.movie_genres.findMany({
+      where: { movie_id: movieId },
+      select: { genre_id: true },
+    });
+    const genreIds = genreRows.map((r) => r.genre_id);
+    const placeholders = genreIds.length ? genreIds.map(() => '?').join(',') : null;
+    let combined = [];
+
+    if (placeholders) {
+      const [movieRows] = await pool.query(
+        `SELECT DISTINCT m.id, m.title, m.thumbnail_url, m.banner_url, m.age_rating, m.rating, m.release_year, m.country_code
+         FROM movies m
+         INNER JOIN movie_genres mg ON mg.movie_id = m.id AND mg.genre_id IN (${placeholders})
+         WHERE m.id != ?
+         ORDER BY m.id DESC
+         LIMIT ?`,
+        [...genreIds, movieId, limit]
+      );
+      const [seriesRows] = await pool.query(
+        `SELECT DISTINCT s.id, s.title, s.thumbnail_url, s.banner_url, s.age_rating, s.rating, s.release_year, s.country_code
+         FROM series s
+         INNER JOIN series_genres sg ON sg.series_id = s.id AND sg.genre_id IN (${placeholders})
+         ORDER BY s.id DESC
+         LIMIT ?`,
+        [...genreIds, limit]
+      );
+      const withType = (arr, type) => (arr || []).map((r) => ({ ...r, type }));
+      combined = [...withType(movieRows || [], 'movie'), ...withType(seriesRows || [], 'series')]
+        .sort((a, b) => (b.id - a.id))
+        .slice(0, limit);
+    }
+
+    if (combined.length < limit) {
+      const haveIds = new Set(combined.map((c) => `${c.type}-${c.id}`));
+      const need = limit - combined.length;
+      const [moreMovies] = await pool.query(
+        `SELECT id, title, thumbnail_url, banner_url, age_rating, rating, release_year, country_code
+         FROM movies WHERE id != ? ORDER BY id DESC LIMIT ?`,
+        [movieId, need * 2]
+      );
+      const [moreSeries] = await pool.query(
+        `SELECT id, title, thumbnail_url, banner_url, age_rating, rating, release_year, country_code
+         FROM series ORDER BY id DESC LIMIT ?`,
+        [need * 2]
+      );
+      const more = [
+        ...(moreMovies || []).map((r) => ({ ...r, type: 'movie' })),
+        ...(moreSeries || []).map((r) => ({ ...r, type: 'series' })),
+      ]
+        .sort((a, b) => b.id - a.id)
+        .filter((r) => !haveIds.has(`${r.type}-${r.id}`))
+        .slice(0, need);
+      combined = [...combined, ...more];
+    }
+    res.json(combined);
+  } catch (err) {
+    console.error('getSuggestions error:', err);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
 module.exports = {
   listMovies,
   getMovieById,
+  listTopRatingMovies,
   listTrendingMovies,
   randomMovieWithTrailer,
   searchMovies,
@@ -500,11 +700,14 @@ module.exports = {
   updateMovie,
   deleteMovie,
   likeMovie,
+  unlikeMovie,
+  getMovieLikeStatus,
   setMovieGenres,
   getMovieGenres,
   getMovieCast,
   addMovieCast,
   removeMovieCast,
+  getSuggestions,
 };
 
 

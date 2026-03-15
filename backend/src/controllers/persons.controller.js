@@ -1,4 +1,5 @@
 const { pool } = require('../config/db');
+const { normalize } = require('../utils/normalize');
 
 async function listPersons(req, res) {
   const { q, type } = req.query;
@@ -76,9 +77,11 @@ async function createPerson(req, res) {
   }
   const type = person_type === 'director' ? 'director' : 'actor';
   try {
+    const nameTrim = String(name).trim();
+    const nameNorm = normalize(nameTrim);
     const [result] = await pool.query(
-      'INSERT INTO persons (name, avatar_url, biography, person_type) VALUES (?, ?, ?, ?)',
-      [String(name).trim(), avatar_url || null, biography || null, type]
+      'INSERT INTO persons (name, name_normalized, avatar_url, biography, person_type) VALUES (?, ?, ?, ?, ?)',
+      [nameTrim, nameNorm || null, avatar_url || null, biography || null, type]
     );
     const [rows] = await pool.query('SELECT * FROM persons WHERE id = ?', [result.insertId]);
     res.status(201).json(rows[0]);
@@ -100,9 +103,11 @@ async function updatePerson(req, res) {
     if (rows.length === 0) {
       return res.status(404).json({ message: 'Person not found' });
     }
+    const nameTrim = String(name).trim();
+    const nameNorm = normalize(nameTrim);
     await pool.query(
-      'UPDATE persons SET name = ?, avatar_url = ?, biography = ?, person_type = ? WHERE id = ?',
-      [String(name).trim(), avatar_url ?? null, biography ?? null, type, id]
+      'UPDATE persons SET name = ?, name_normalized = ?, avatar_url = ?, biography = ?, person_type = ? WHERE id = ?',
+      [nameTrim, nameNorm || null, avatar_url ?? null, biography ?? null, type, id]
     );
     const [updated] = await pool.query('SELECT * FROM persons WHERE id = ?', [id]);
     res.json(updated[0]);

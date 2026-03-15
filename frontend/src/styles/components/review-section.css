@@ -166,3 +166,22 @@
   line-height: 1.5;
   white-space: pre-wrap;
 }
+
+.review-section-load-more {
+  margin-top: 16px;
+  padding: 10px 20px;
+  border-radius: 4px;
+  border: 1px solid #555;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+}
+
+.review-section-load-more:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.review-section-load-more:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

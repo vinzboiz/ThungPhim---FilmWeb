@@ -12,13 +12,19 @@ function getProfileName() {
   return localStorage.getItem('profileName') || '';
 }
 
-function setProfileInfo(profileId, profileName) {
+function getProfileAvatar() {
+  return localStorage.getItem('profileAvatar') || '';
+}
+
+function setProfileInfo(profileId, profileName, profileAvatar) {
   if (profileId != null) {
     localStorage.setItem('profileId', String(profileId));
     localStorage.setItem('profileName', profileName || '');
+    localStorage.setItem('profileAvatar', profileAvatar || '');
   } else {
     localStorage.removeItem('profileId');
     localStorage.removeItem('profileName');
+    localStorage.removeItem('profileAvatar');
   }
 }
 
@@ -69,5 +75,5 @@ export async function apiFormData(method, path, formData, options = {}) {
   return data;
 }
 
-export { API_BASE, getToken, getProfileId, getProfileName, setProfileInfo, getIsAdmin, setAdminFlag };
+export { API_BASE, getToken, getProfileId, getProfileName, getProfileAvatar, setProfileInfo, getIsAdmin, setAdminFlag };
 

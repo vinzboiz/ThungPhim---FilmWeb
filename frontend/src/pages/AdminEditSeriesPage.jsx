@@ -13,11 +13,16 @@ function AdminEditSeriesPage() {
     trailer_url: '',
     age_rating: '',
     release_year: '',
+    country_code: '',
+    duration_minutes: '',
     is_featured: false,
   });
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [countries, setCountries] = useState([]);
+  const [genres, setGenres] = useState([]);
+  const [genreIds, setGenreIds] = useState([]);
   const [cast, setCast] = useState([]);
   const [persons, setPersons] = useState([]);
   const [addActorIds, setAddActorIds] = useState([]);
@@ -29,9 +34,11 @@ function AdminEditSeriesPage() {
   useEffect(() => {
     async function load() {
       try {
-        const [seriesRes, personsRes] = await Promise.all([
+        const [seriesRes, personsRes, countriesRes, genresRes] = await Promise.all([
           fetch(`${API_BASE}/api/series/${id}`),
           fetch(`${API_BASE}/api/persons`),
+          fetch(`${API_BASE}/api/countries`),
+          fetch(`${API_BASE}/api/genres`),
         ]);
         if (!seriesRes.ok) throw new Error('Không tải được series');
         const data = await seriesRes.json();
@@ -43,11 +50,18 @@ function AdminEditSeriesPage() {
           trailer_url: data.trailer_url || '',
           age_rating: data.age_rating || '',
           release_year: data.release_year != null ? String(data.release_year) : '',
+          country_code: data.country_code || '',
+          duration_minutes: data.duration_minutes != null ? String(data.duration_minutes) : '',
           is_featured: !!data.is_featured,
         });
+        setGenreIds(Array.isArray(data.genres) ? data.genres.map((g) => g.id) : []);
         setCast(Array.isArray(data.cast) ? data.cast : []);
         const pData = personsRes.ok ? await personsRes.json() : [];
         setPersons(Array.isArray(pData) ? pData : []);
+        const cData = countriesRes.ok ? await countriesRes.json() : [];
+        setCountries(Array.isArray(cData) ? cData : []);
+        const gData = genresRes.ok ? await genresRes.json() : [];
+        setGenres(Array.isArray(gData) ? gData : []);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -76,6 +90,15 @@ function AdminEditSeriesPage() {
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
         throw new Error(d.message || 'Cập nhật thất bại');
+      }
+      const genRes = await fetch(`${API_BASE}/api/series/${id}/genres`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ genre_ids: genreIds }),
+      });
+      if (!genRes.ok) {
+        const d = await genRes.json().catch(() => ({}));
+        throw new Error(d.message || 'Cập nhật thể loại thất bại');
       }
       setMessage('Đã lưu series.');
     } catch (err) {
@@ -224,8 +247,36 @@ function AdminEditSeriesPage() {
           <input type="number" name="release_year" value={form.release_year} onChange={handleChange} placeholder="vd: 2008" min="1900" max="2100" style={{ padding: '8px', width: '100px' }} />
         </label>
         <label>
+          Quốc gia sản xuất
+          <select name="country_code" value={form.country_code} onChange={handleChange} style={{ display: 'block', marginTop: '4px', padding: '8px', minWidth: '200px' }}>
+            <option value="">-- Chọn quốc gia --</option>
+            {countries.map((c) => (
+              <option key={c.code} value={c.code}>{c.name}</option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Thời lượng trung bình 1 tập (phút)
+          <input type="number" name="duration_minutes" value={form.duration_minutes} onChange={handleChange} placeholder="vd: 45" min="1" max="300" style={{ padding: '8px', width: '100px' }} />
+        </label>
+        <label>
           Age rating (vd: 13+)
           <input type="text" name="age_rating" value={form.age_rating} onChange={handleChange} style={{ padding: '8px' }} />
+        </label>
+        <label>
+          Thể loại
+          <select
+            multiple
+            value={genreIds.map(String)}
+            onChange={(e) => setGenreIds(Array.from(e.target.selectedOptions, (o) => Number(o.value)))}
+            style={{ display: 'block', marginTop: '4px', padding: '8px', minWidth: '200px', minHeight: '80px' }}
+            title="Giữ Ctrl để chọn nhiều"
+          >
+            {genres.map((g) => (
+              <option key={g.id} value={g.id}>{g.name}</option>
+            ))}
+          </select>
+          <span style={{ fontSize: 12, color: '#888' }}>Giữ Ctrl (Cmd trên Mac) để chọn nhiều thể loại</span>
         </label>
         <label>
           <input type="checkbox" name="is_featured" checked={form.is_featured} onChange={handleChange} /> Featured

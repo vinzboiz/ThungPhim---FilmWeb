@@ -1,5 +1,6 @@
 const express = require('express');
 const {
+  listTopGenresWithMovies,
   listGenres,
   createGenre,
   updateGenre,
@@ -10,6 +11,7 @@ const router = express.Router();
 
 // PUBLIC
 router.get('/', listGenres);
+router.get('/top-with-movies', listTopGenresWithMovies);
 
 // Tạm thời mở CRUD thể loại cho mọi user (sẽ thêm auth sau)
 router.post('/', createGenre);

@@ -24,21 +24,25 @@ function AdminEditMoviePage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [countries, setCountries] = useState([]);
+  const [genres, setGenres] = useState([]);
+  const [genreIds, setGenreIds] = useState([]);
   const [cast, setCast] = useState([]);
   const [persons, setPersons] = useState([]);
   const [addActorIds, setAddActorIds] = useState([]);
   const [addDirectorIds, setAddDirectorIds] = useState([]);
   const [addingActors, setAddingActors] = useState(false);
   const [addingDirectors, setAddingDirectors] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   useEffect(() => {
     async function load() {
       try {
-        const [movieRes, castRes, countriesRes, personsRes] = await Promise.all([
+        const [movieRes, castRes, countriesRes, personsRes, genresRes] = await Promise.all([
           fetch(`${API_BASE}/api/movies/${id}`),
           fetch(`${API_BASE}/api/movies/${id}/cast`),
           fetch(`${API_BASE}/api/countries`),
           fetch(`${API_BASE}/api/persons`),
+          fetch(`${API_BASE}/api/genres`),
         ]);
         if (!movieRes.ok) throw new Error('Không tải được thông tin phim');
         const data = await movieRes.json();
@@ -63,6 +67,9 @@ function AdminEditMoviePage() {
         setCountries(Array.isArray(countriesData) ? countriesData : []);
         const personsData = personsRes.ok ? await personsRes.json() : [];
         setPersons(Array.isArray(personsData) ? personsData : []);
+        setGenreIds(Array.isArray(data.genres) ? data.genres.map((g) => g.id) : []);
+        const gData = genresRes.ok ? await genresRes.json() : [];
+        setGenres(Array.isArray(gData) ? gData : []);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -181,28 +188,38 @@ function AdminEditMoviePage() {
     e.target.value = '';
   }
 
-  async function handleThumbnailFileChange(e) {
-    const file = e.target.files[0];
-    if (!file) return;
+  async function uploadImage(file, field) {
+    setUploadingImage(true);
     setError('');
-    setMessage('Đang upload ảnh bìa...');
     try {
-      const formData = new FormData();
-      formData.append('image', file);
+      const fd = new FormData();
+      fd.append('image', file);
       const res = await fetch(`${API_BASE}/api/upload/image`, {
         method: 'POST',
-        body: formData,
+        body: fd,
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.message || 'Upload ảnh thất bại');
       }
       const data = await res.json();
-      setForm((prev) => ({ ...prev, thumbnail_url: data.image_url }));
-      setMessage('Upload ảnh bìa thành công.');
+      setForm((prev) => ({ ...prev, [field]: data.image_url }));
+      if (field === 'banner_url') {
+        setMessage('Upload ảnh banner thành công. Đường dẫn đã được gán vào Banner URL.');
+      } else {
+        setMessage('Upload ảnh bìa thành công.');
+      }
     } catch (err) {
       setError(err.message);
+    } finally {
+      setUploadingImage(false);
     }
+  }
+
+  async function handleThumbnailFileChange(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    await uploadImage(file, 'thumbnail_url');
     e.target.value = '';
   }
 
@@ -217,26 +234,7 @@ function AdminEditMoviePage() {
   async function handleBannerFileChange(e) {
     const file = e.target.files[0];
     if (!file) return;
-    setError('');
-    setMessage('Đang upload ảnh banner...');
-    try {
-      const formData = new FormData();
-      formData.append('image', file);
-      const res = await fetch(`${API_BASE}/api/upload/image`, {
-        method: 'POST',
-        body: formData,
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.message || 'Upload ảnh banner thất bại');
-      }
-      const data = await res.json();
-      setForm((prev) => ({ ...prev, banner_url: data.image_url }));
-      setMessage('Upload ảnh banner thành công. Đường dẫn đã được gán vào Banner URL.');
-    } catch (err) {
-      console.error(err);
-      setError(err.message);
-    }
+    await uploadImage(file, 'banner_url');
     e.target.value = '';
   }
 
@@ -262,6 +260,9 @@ function AdminEditMoviePage() {
         },
         { auth: true },
       );
+      await api('POST', `/api/movies/${id}/genres`, {
+        genre_ids: genreIds.map((g) => Number(g)).filter((g) => g > 0),
+      }, { auth: true });
       setMessage('Đã cập nhật phim.');
     } catch (err) {
       setError(err.message);
@@ -425,6 +426,28 @@ function AdminEditMoviePage() {
             ))}
           </select>
         </label>
+        {genres.length > 0 && (
+          <fieldset style={{ border: '1px solid #444', padding: '12px', marginBottom: '8px' }}>
+            <legend>Thể loại</legend>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px 16px' }}>
+              {genres.map((g) => (
+                <label key={g.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={genreIds.includes(g.id)}
+                    onChange={(e) => {
+                      setGenreIds((prev) =>
+                        e.target.checked ? [...prev, g.id] : prev.filter((id) => id !== g.id)
+                      );
+                    }}
+                  />
+                  {g.name}
+                </label>
+              ))}
+            </div>
+            <span style={{ fontSize: 12, color: '#888' }}>Chọn nhiều thể loại cho phim</span>
+          </fieldset>
+        )}
         <fieldset style={{ border: '1px solid #444', padding: '12px', marginBottom: '8px' }}>
           <legend>Diễn viên &amp; Đạo diễn</legend>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
