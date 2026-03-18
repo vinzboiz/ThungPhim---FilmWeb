@@ -1,7 +1,8 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useLocation } from 'react-router-dom';
 import { api } from '../apis/client';
 import { API_BASE, getToken, getProfileId } from '../apis/client';
+import { pushClientNotification } from '../utils/notificationsClient';
 import ReviewSection from '../components/ReviewSection';
 import DetailSuggestions from '../components/detail/DetailSuggestions';
 import HeroBanner from '../components/home/HeroBanner';
@@ -32,6 +33,11 @@ function WatchMoviePage() {
   const initialProgressApplied = useRef(false);
   const profileId = getProfileId();
   const token = getToken();
+  const location = useLocation();
+  const continueSecondsFromState = location.state?.continueSeconds || 0;
+  const [showContinuePrompt, setShowContinuePrompt] = useState(
+    !!location.state?.askContinue && continueSecondsFromState > 0,
+  );
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -48,7 +54,13 @@ function WatchMoviePage() {
   }, [id]);
 
   useEffect(() => {
-    if (!token || !profileId || !id) return;
+    if (continueSecondsFromState > 0) {
+      setSavedProgress(continueSecondsFromState);
+    }
+  }, [continueSecondsFromState]);
+
+  useEffect(() => {
+    if (!token || !profileId || !id || showContinuePrompt) return;
     let cancelled = false;
     fetch(`${API_BASE}/api/watch/progress?profile_id=${profileId}&movie_id=${id}`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -113,6 +125,7 @@ function WatchMoviePage() {
   }, [saveProgress]);
 
   const applySavedProgressOnce = useCallback(() => {
+    if (showContinuePrompt) return;
     if (initialProgressApplied.current) return;
     const v = videoRef.current;
     if (savedProgress <= 0 || !v || v.readyState < 1) return;
@@ -122,7 +135,7 @@ function WatchMoviePage() {
       : savedProgress;
     v.currentTime = start;
     initialProgressApplied.current = true;
-  }, [savedProgress]);
+  }, [savedProgress, showContinuePrompt]);
 
   const scrollToComments = useCallback(() => {
     commentSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -138,6 +151,7 @@ function WatchMoviePage() {
       } else {
         await api('POST', '/api/watchlist', { profile_id: profileId, movie_id: Number(id) });
         setInWatchlist(true);
+        pushClientNotification('watchlist_add', 'Bạn đã thêm một phim vào danh sách của tôi.');
       }
     } catch (err) {
       console.error(err);
@@ -156,6 +170,7 @@ function WatchMoviePage() {
       } else {
         await api('POST', '/api/favorites', { profile_id: profileId, movie_id: Number(id) });
         setInFavorite(true);
+        pushClientNotification('favorite_add', 'Bạn đã thêm một phim vào danh sách yêu thích.');
       }
     } catch (err) {
       console.error(err);
@@ -163,6 +178,30 @@ function WatchMoviePage() {
       setFavoriteLoading(false);
     }
   }, [token, profileId, id, inFavorite]);
+
+  const handleChooseContinue = () => {
+    setShowContinuePrompt(false);
+    const v = videoRef.current;
+    if (v && savedProgress > 0) {
+      const duration = v.duration;
+      const start =
+        isFinite(duration) && duration > 0 && duration > savedProgress
+          ? Math.min(savedProgress, duration - 1)
+          : savedProgress;
+      v.currentTime = start;
+    }
+    initialProgressApplied.current = true;
+  };
+
+  const handleChooseRestart = () => {
+    setShowContinuePrompt(false);
+    const v = videoRef.current;
+    initialProgressApplied.current = true;
+    if (v) {
+      v.currentTime = 0;
+      saveProgress(0);
+    }
+  };
 
   if (loading) return <div className="watch-movie"><div className="watch-movie-loading">Đang tải...</div></div>;
   if (error || !movie) {
@@ -187,6 +226,25 @@ function WatchMoviePage() {
 
   return (
     <div className="watch-movie">
+      {showContinuePrompt && savedProgress > 0 && (
+        <div className="watch-movie-continue-overlay">
+          <div className="watch-movie-continue-dialog">
+            <p>
+              Hiện bạn đang xem đến{' '}
+              <strong>{Math.floor(savedProgress / 60)} phút {Math.floor(savedProgress % 60)} giây</strong>.
+            </p>
+            <p>Bạn muốn tiếp tục xem từ vị trí này hay xem lại từ đầu?</p>
+            <div className="watch-movie-continue-actions">
+              <button type="button" onClick={handleChooseContinue}>
+                Tiếp tục xem
+              </button>
+              <button type="button" onClick={handleChooseRestart}>
+                Xem lại từ đầu
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <nav className="watch-movie-breadcrumb">
         <Link to="/">Trang chủ</Link>
         <span>›</span>
@@ -215,7 +273,7 @@ function WatchMoviePage() {
             ))}
           </span>
           <span className="watch-movie-rating-text">
-            {movie.rating != null ? Number(movie.rating).toFixed(1) : '—'} điểm ({movie.review_count ?? 0} lượt)
+            {movie.rating != null ? Number(movie.rating).toFixed(1) : '—'} điểm
           </span>
         </div>
         <button type="button" className="watch-movie-btn-comment" onClick={scrollToComments}>

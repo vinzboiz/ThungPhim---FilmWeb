@@ -25,6 +25,20 @@ model users {
 
   profiles profiles[]
   reviews  reviews[]
+  notifications notifications[]
+}
+
+model notifications {
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  type       String   @db.VarChar(50)
+  message    String   @db.Text
+  is_read    Boolean  @default(false)
+  created_at DateTime @default(now())
+
+  user users @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([user_id], name: "idx_notifications_user")
 }
 
 model profiles {
@@ -55,7 +69,8 @@ model movies {
   duration_minutes Int?
   thumbnail_url    String?    // poster dọc (card)
   banner_url       String?    // ảnh banner ngang cho Hero/Home
-  trailer_url      String?
+  trailer_url      String?    // trailer local dùng cho Hero banner (file upload)
+  trailer_youtube_url String? // trailer YouTube dùng cho trang chi tiết
   video_url        String?
   rating           Decimal?   @db.Decimal(3, 1)
   age_rating       String?
@@ -136,7 +151,8 @@ model series {
   description   String?  @db.Text
   thumbnail_url String?  // poster dọc
   banner_url    String?  // banner ngang
-  trailer_url   String?  // trailer của toàn bộ series
+  trailer_url   String?  // trailer local cho Hero/banner
+  trailer_youtube_url String? // trailer YouTube cho trang chi tiết
   age_rating    String?
   is_featured   Boolean  @default(false)
   view_count    Int      @default(0)

@@ -1,4 +1,5 @@
 const { pool } = require('../config/db');
+const { createNotification } = require('./notifications.controller');
 
 async function listWatchlist(req, res) {
   const userId = req.user?.id;
@@ -15,21 +16,21 @@ async function listWatchlist(req, res) {
     const [rows] = await pool.query(
       // movie
       `(SELECT 'movie' AS type, w.movie_id AS content_id, NULL AS series_id,
-               m.title, m.thumbnail_url, m.age_rating, w.added_at
+               m.title, m.thumbnail_url, m.banner_url, m.age_rating, w.added_at
         FROM watchlist w
         JOIN movies m ON m.id = w.movie_id
         WHERE w.profile_id = ? AND w.movie_id IS NOT NULL)
        UNION ALL
        -- series
        (SELECT 'series' AS type, w.series_id AS content_id, NULL AS series_id,
-               s.title, s.thumbnail_url, s.age_rating, w.added_at
+               s.title, s.thumbnail_url, s.banner_url, s.age_rating, w.added_at
         FROM watchlist w
         JOIN series s ON s.id = w.series_id
         WHERE w.profile_id = ? AND w.series_id IS NOT NULL)
        UNION ALL
        -- episode
        (SELECT 'episode' AS type, w.episode_id AS content_id, e.series_id AS series_id,
-               e.title, e.thumbnail_url, NULL AS age_rating, w.added_at
+               e.title, e.thumbnail_url, NULL AS banner_url, NULL AS age_rating, w.added_at
         FROM watchlist w
         JOIN episodes e ON e.id = w.episode_id
         WHERE w.profile_id = ? AND w.episode_id IS NOT NULL)
@@ -62,6 +63,12 @@ async function addToWatchlist(req, res) {
       'INSERT IGNORE INTO watchlist (profile_id, movie_id, series_id, episode_id, added_at) VALUES (?, ?, ?, ?, NOW())',
       [profile_id, mid, sid, eid]
     );
+    // tạo thông báo (không chặn nếu lỗi)
+    if (mid) {
+      createNotification(userId, 'watchlist_add', 'Bạn đã thêm một phim vào danh sách của tôi.').catch(() => {});
+    } else if (sid) {
+      createNotification(userId, 'watchlist_add', 'Bạn đã thêm một series vào danh sách của tôi.').catch(() => {});
+    }
     res.status(201).json({ message: 'Đã thêm vào watchlist' });
   } catch (err) {
     console.error('addToWatchlist error:', err);

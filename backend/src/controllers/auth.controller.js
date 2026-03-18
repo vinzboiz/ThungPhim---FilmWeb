@@ -1,6 +1,7 @@
 const { pool } = require('../config/db');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { createNotification } = require('./notifications.controller');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_key';
 
@@ -53,6 +54,9 @@ async function login(req, res) {
       JWT_SECRET,
       { expiresIn: '7d' }
     );
+
+    // Ghi lại thông báo đăng nhập (best-effort, không chặn login nếu lỗi)
+    createNotification(user.id, 'login', 'Bạn đã đăng nhập vào ThungPhim.').catch(() => {});
 
     res.json({
       token,

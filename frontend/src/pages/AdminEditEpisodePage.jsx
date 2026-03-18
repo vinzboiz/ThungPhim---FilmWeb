@@ -20,6 +20,7 @@ function AdminEditEpisodePage() {
   });
   const [seasons, setSeasons] = useState([]);
   const [uploading, setUploading] = useState(false);
+  const [uploadingVideoOverlay, setUploadingVideoOverlay] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -98,6 +99,9 @@ function AdminEditEpisodePage() {
     try {
       const fd = new FormData();
       fd.append(type === 'video' ? 'video' : 'image', file);
+      if (type === 'video') {
+        setUploadingVideoOverlay(true);
+      }
       const res = await fetch(`${API_BASE}/api/upload/${type === 'video' ? 'video' : 'image'}`, {
         method: 'POST',
         headers: getToken() ? { Authorization: `Bearer ${getToken()}` } : {},
@@ -111,6 +115,11 @@ function AdminEditEpisodePage() {
       setError(err.message);
     } finally {
       setUploading(false);
+      if (type === 'video') {
+        setTimeout(() => {
+          setUploadingVideoOverlay(false);
+        }, 3000);
+      }
     }
   }
 
@@ -118,7 +127,32 @@ function AdminEditEpisodePage() {
   if (error && !episode) return <div style={{ padding: '24px', color: '#f44' }}>{error}</div>;
 
   return (
-    <div style={{ padding: '24px', maxWidth: '600px', margin: '0 auto', color: '#fff' }}>
+    <div style={{ padding: '24px', maxWidth: '600px', margin: '0 auto', color: '#fff', position: 'relative' }}>
+      {uploadingVideoOverlay && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+          }}
+        >
+          <div
+            style={{
+              background: '#181818',
+              padding: '16px 24px',
+              borderRadius: 8,
+              color: '#fff',
+              fontSize: 14,
+            }}
+          >
+            Đang upload video tập, vui lòng đợi trong giây lát...
+          </div>
+        </div>
+      )}
       <div style={{ marginBottom: '16px' }}>
         <Link to={`/admin/series/${seriesId}`} style={{ color: '#e50914' }}>← Quay lại series</Link>
       </div>

@@ -2,6 +2,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import { api } from '../apis/client';
 import { API_BASE, getToken, getProfileId } from '../apis/client';
+import { pushClientNotification } from '../utils/notificationsClient';
 import ReviewSection from '../components/ReviewSection';
 import DetailMetaRow from '../components/detail/DetailMetaRow';
 import DetailCast from '../components/detail/DetailCast';
@@ -16,6 +17,29 @@ function resolveVideoSrc(url, apiBase) {
   const u = String(url).trim();
   if (u.startsWith('http')) return u;
   return u.startsWith('/') ? `${base}${u}` : `${base}/${u.replace(/^\//, '')}`;
+}
+
+function getYouTubeEmbedUrl(rawUrl) {
+  if (!rawUrl) return null;
+  const url = String(rawUrl).trim();
+  try {
+    const u = new URL(url);
+    if (u.hostname.includes('youtube.com')) {
+      const v = u.searchParams.get('v');
+      if (v) return `https://www.youtube.com/embed/${v}`;
+      const parts = u.pathname.split('/');
+      const id = parts[parts.length - 1];
+      if (id) return `https://www.youtube.com/embed/${id}`;
+    }
+    if (u.hostname.includes('youtu.be')) {
+      const parts = u.pathname.split('/');
+      const id = parts[parts.length - 1];
+      if (id) return `https://www.youtube.com/embed/${id}`;
+    }
+  } catch {
+    // ignore parse errors
+  }
+  return null;
 }
 
 function ContentDetailPage() {
@@ -146,6 +170,7 @@ function ContentDetailPage() {
       } else {
         await api('POST', '/api/watchlist', { profile_id: profileId, movie_id: Number(id) });
         setInWatchlist(true);
+        pushClientNotification('watchlist_add', 'Bạn đã thêm một phim vào danh sách của tôi.');
       }
     } catch (err) {
       console.error(err);
@@ -164,6 +189,7 @@ function ContentDetailPage() {
       } else {
         await api('POST', '/api/favorites', { profile_id: profileId, movie_id: Number(id) });
         setInFavorite(true);
+        pushClientNotification('favorite_add', 'Bạn đã thêm một phim vào danh sách yêu thích.');
       }
     } catch (err) {
       console.error(err);
@@ -193,10 +219,9 @@ function ContentDetailPage() {
   const thumbSrc = content.thumbnail_url
     ? (String(content.thumbnail_url).startsWith('http') ? content.thumbnail_url : `${API_BASE}${content.thumbnail_url}`)
     : null;
-  const trailerSrc = resolveVideoSrc(
-    type === 'movie' ? content.trailer_url : content.trailer_url,
-    API_BASE
-  );
+  const youtubeEmbedUrl = getYouTubeEmbedUrl(content.trailer_youtube_url);
+  const localTrailerSrc = resolveVideoSrc(content.trailer_url, API_BASE);
+  const trailerSrc = youtubeEmbedUrl || localTrailerSrc;
   const hasTrailer = !!trailerSrc;
   const seasons = content.seasons || [];
   const countryName = content.country_code
@@ -324,7 +349,19 @@ function ContentDetailPage() {
         {hasTrailer && (
           <section className="movie-detail-trailer" ref={trailerSectionRef}>
             <h2>Trailer</h2>
-            <video src={trailerSrc} controls className="detail-trailer-video" />
+            {youtubeEmbedUrl ? (
+              <div className="detail-trailer-video detail-trailer-video--embed">
+                <iframe
+                  src={youtubeEmbedUrl}
+                  title="Trailer"
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                />
+              </div>
+            ) : (
+              <video src={localTrailerSrc} controls className="detail-trailer-video" />
+            )}
           </section>
         )}
 

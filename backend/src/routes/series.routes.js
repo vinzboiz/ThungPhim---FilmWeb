@@ -23,7 +23,15 @@ const {
   removeSeriesCast,
   setSeriesGenres,
 } = require('../controllers/series.controller');
+const authMiddleware = require('../middleware/auth.middleware');
 const router = express.Router();
+
+function requireAdmin(req, res, next) {
+  if (!req.user?.isAdmin) {
+    return res.status(403).json({ message: 'Chỉ admin mới được phép thao tác' });
+  }
+  next();
+}
 
 // PUBLIC
 // GET /api/series
@@ -57,36 +65,34 @@ router.get('/:id/cast', getSeriesCast);
 router.post('/:id/cast', addSeriesCast);
 router.delete('/:id/cast/:personId', removeSeriesCast);
 
-router.post('/:id/genres', setSeriesGenres);
-
-// Tạm thời mở các API admin cho mọi user (sẽ thêm auth sau)
+router.post('/:id/genres', authMiddleware, requireAdmin, setSeriesGenres);
 
 // POST /api/series
-router.post('/', createSeries);
+router.post('/', authMiddleware, requireAdmin, createSeries);
 
 // PUT /api/series/:id
-router.put('/:id', updateSeries);
+router.put('/:id', authMiddleware, requireAdmin, updateSeries);
 
 // DELETE /api/series/:id
-router.delete('/:id', deleteSeries);
+router.delete('/:id', authMiddleware, requireAdmin, deleteSeries);
 
 // POST /api/series/episodes
-router.post('/episodes', createEpisode);
+router.post('/episodes', authMiddleware, requireAdmin, createEpisode);
 
 // PUT /api/series/episodes/:episodeId
-router.put('/episodes/:episodeId', updateEpisode);
+router.put('/episodes/:episodeId', authMiddleware, requireAdmin, updateEpisode);
 
 // DELETE /api/series/episodes/:episodeId
-router.delete('/episodes/:episodeId', deleteEpisode);
+router.delete('/episodes/:episodeId', authMiddleware, requireAdmin, deleteEpisode);
 
 // POST /api/series/:id/seasons
-router.post('/:id/seasons', createSeason);
+router.post('/:id/seasons', authMiddleware, requireAdmin, createSeason);
 
 // PUT /api/series/:id/seasons/:seasonId
-router.put('/:id/seasons/:seasonId', updateSeason);
+router.put('/:id/seasons/:seasonId', authMiddleware, requireAdmin, updateSeason);
 
 // DELETE /api/series/:id/seasons/:seasonId
-router.delete('/:id/seasons/:seasonId', deleteSeason);
+router.delete('/:id/seasons/:seasonId', authMiddleware, requireAdmin, deleteSeason);
 
 module.exports = router;
 

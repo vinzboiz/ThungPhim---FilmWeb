@@ -11,6 +11,7 @@ function AdminEditSeriesPage() {
     thumbnail_url: '',
     banner_url: '',
     trailer_url: '',
+    trailer_youtube_url: '',
     age_rating: '',
     release_year: '',
     country_code: '',
@@ -48,6 +49,7 @@ function AdminEditSeriesPage() {
           thumbnail_url: data.thumbnail_url || '',
           banner_url: data.banner_url || '',
           trailer_url: data.trailer_url || '',
+          trailer_youtube_url: data.trailer_youtube_url || '',
           age_rating: data.age_rating || '',
           release_year: data.release_year != null ? String(data.release_year) : '',
           country_code: data.country_code || '',
@@ -218,7 +220,7 @@ function AdminEditSeriesPage() {
           </div>
         </label>
         <label>
-          Trailer (của toàn bộ series) — URL hoặc upload
+          Trailer (của toàn bộ series)
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <input type="file" accept="video/*" onChange={async (e) => {
               const file = e.target.files[0];
@@ -239,7 +241,13 @@ function AdminEditSeriesPage() {
               }
               e.target.value = '';
             }} />
-            <input type="text" name="trailer_url" value={form.trailer_url} onChange={handleChange} placeholder="/uploads/videos/..." style={{ flex: 1, minWidth: 200, padding: '8px' }} />
+            <input type="text" name="trailer_url" value={form.trailer_url} onChange={handleChange} placeholder="/uploads/videos/... (Hero)" style={{ flex: 1, minWidth: 200, padding: '8px' }} />
+          </div>
+        </label>
+        <label>
+          Trailer YouTube URL (trang chi tiết)
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <input type="text" name="trailer_youtube_url" value={form.trailer_youtube_url} onChange={handleChange} placeholder="https://youtube.com/..." style={{ flex: 1, minWidth: 200, padding: '8px' }} />
           </div>
         </label>
         <label>
@@ -265,18 +273,29 @@ function AdminEditSeriesPage() {
         </label>
         <label>
           Thể loại
-          <select
-            multiple
-            value={genreIds.map(String)}
-            onChange={(e) => setGenreIds(Array.from(e.target.selectedOptions, (o) => Number(o.value)))}
-            style={{ display: 'block', marginTop: '4px', padding: '8px', minWidth: '200px', minHeight: '80px' }}
-            title="Giữ Ctrl để chọn nhiều"
-          >
-            {genres.map((g) => (
-              <option key={g.id} value={g.id}>{g.name}</option>
-            ))}
-          </select>
-          <span style={{ fontSize: 12, color: '#888' }}>Giữ Ctrl (Cmd trên Mac) để chọn nhiều thể loại</span>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 16px', marginTop: '4px' }}>
+            {genres.map((g) => {
+              const checked = genreIds.includes(g.id);
+              return (
+                <label
+                  key={g.id}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={(e) => {
+                      setGenreIds((prev) =>
+                        e.target.checked ? [...prev, g.id] : prev.filter((id) => id !== g.id),
+                      );
+                    }}
+                  />
+                  {g.name}
+                </label>
+              );
+            })}
+          </div>
+          <span style={{ fontSize: 12, color: '#888' }}>Có thể chọn nhiều thể loại cho series.</span>
         </label>
         <label>
           <input type="checkbox" name="is_featured" checked={form.is_featured} onChange={handleChange} /> Featured
@@ -297,18 +316,52 @@ function AdminEditSeriesPage() {
                 ))}
                 {cast.filter((c) => c.role === 'actor').length === 0 && <span style={{ color: '#888', fontSize: 13 }}>Chưa có</span>}
               </div>
-              <select
-                multiple
-                value={addActorIds.map(String)}
-                onChange={(e) => setAddActorIds(Array.from(e.target.selectedOptions, (o) => Number(o.value)))}
-                style={{ padding: 6, width: '100%', minHeight: 72, marginBottom: 6 }}
-                title="Giữ Ctrl để chọn nhiều"
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 4,
+                  maxHeight: 180,
+                  overflowY: 'auto',
+                  border: '1px solid #444',
+                  padding: 6,
+                  borderRadius: 4,
+                  marginBottom: 6,
+                }}
               >
-                {persons.filter((p) => p.person_type !== 'director' && !cast.some((c) => c.id === p.id)).map((p) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
-              </select>
-              <button type="button" onClick={handleAddActors} disabled={!addActorIds.length || addingActors}>{addingActors ? 'Đang thêm...' : 'Thêm diễn viên'}</button>
+                {persons
+                  .filter((p) => p.person_type !== 'director' && !cast.some((c) => c.id === p.id))
+                  .map((p) => {
+                    const checked = addActorIds.includes(p.id);
+                    return (
+                      <label
+                        key={p.id}
+                        style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(e) => {
+                            setAddActorIds((prev) =>
+                              e.target.checked ? [...prev, p.id] : prev.filter((id) => id !== p.id),
+                            );
+                          }}
+                        />
+                        {p.name}
+                      </label>
+                    );
+                  })}
+                {persons.filter((p) => p.person_type !== 'director' && !cast.some((c) => c.id === p.id)).length === 0 && (
+                  <span style={{ fontSize: 12, color: '#888' }}>Không còn diễn viên nào để thêm.</span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={handleAddActors}
+                disabled={!addActorIds.length || addingActors}
+              >
+                {addingActors ? 'Đang thêm...' : 'Thêm diễn viên đã chọn'}
+              </button>
             </div>
             <div>
               <h4 style={{ margin: '0 0 8px', fontSize: '14px' }}>Đạo diễn</h4>
@@ -322,18 +375,52 @@ function AdminEditSeriesPage() {
                 ))}
                 {cast.filter((c) => c.role === 'director').length === 0 && <span style={{ color: '#888', fontSize: 13 }}>Chưa có</span>}
               </div>
-              <select
-                multiple
-                value={addDirectorIds.map(String)}
-                onChange={(e) => setAddDirectorIds(Array.from(e.target.selectedOptions, (o) => Number(o.value)))}
-                style={{ padding: 6, width: '100%', minHeight: 72, marginBottom: 6 }}
-                title="Giữ Ctrl để chọn nhiều"
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 4,
+                  maxHeight: 180,
+                  overflowY: 'auto',
+                  border: '1px solid #444',
+                  padding: 6,
+                  borderRadius: 4,
+                  marginBottom: 6,
+                }}
               >
-                {persons.filter((p) => p.person_type === 'director' && !cast.some((c) => c.id === p.id)).map((p) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
-              </select>
-              <button type="button" onClick={handleAddDirectors} disabled={!addDirectorIds.length || addingDirectors}>{addingDirectors ? 'Đang thêm...' : 'Thêm đạo diễn'}</button>
+                {persons
+                  .filter((p) => p.person_type === 'director' && !cast.some((c) => c.id === p.id))
+                  .map((p) => {
+                    const checked = addDirectorIds.includes(p.id);
+                    return (
+                      <label
+                        key={p.id}
+                        style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(e) => {
+                            setAddDirectorIds((prev) =>
+                              e.target.checked ? [...prev, p.id] : prev.filter((id) => id !== p.id),
+                            );
+                          }}
+                        />
+                        {p.name}
+                      </label>
+                    );
+                  })}
+                {persons.filter((p) => p.person_type === 'director' && !cast.some((c) => c.id === p.id)).length === 0 && (
+                  <span style={{ fontSize: 12, color: '#888' }}>Không còn đạo diễn nào để thêm.</span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={handleAddDirectors}
+                disabled={!addDirectorIds.length || addingDirectors}
+              >
+                {addingDirectors ? 'Đang thêm...' : 'Thêm đạo diễn đã chọn'}
+              </button>
             </div>
           </div>
         </fieldset>

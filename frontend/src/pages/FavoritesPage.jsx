@@ -42,6 +42,12 @@ function FavoritesPage() {
     type: 'movie',
   }));
 
+  function handleItemRemoved(removed) {
+    setItems((prev) =>
+      prev.filter((f) => Number(f.movie_id) !== Number(removed.id)),
+    );
+  }
+
   return (
     <div className="favorites-page">
       <h1>Yêu thích</h1>
@@ -50,7 +56,12 @@ function FavoritesPage() {
         <p>Chưa có phim yêu thích. Vào trang phim và bấm nút "Yêu thích".</p>
       )}
       {mappedItems.length > 0 && (
-        <HomeMovieRow title="Yêu thích" items={mappedItems} onOpenInfo={setModalItem} />
+        <HomeMovieRow
+          title="Yêu thích"
+          items={mappedItems}
+          onOpenInfo={setModalItem}
+          onItemRemoved={handleItemRemoved}
+        />
       )}
       <HeroBanner
         modalOnly

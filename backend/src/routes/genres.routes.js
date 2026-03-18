@@ -6,6 +6,7 @@ const {
   updateGenre,
   deleteGenre,
 } = require('../controllers/genres.controller');
+const authMiddleware = require('../middleware/auth.middleware');
 
 const router = express.Router();
 
@@ -13,9 +14,16 @@ const router = express.Router();
 router.get('/', listGenres);
 router.get('/top-with-movies', listTopGenresWithMovies);
 
-// Tạm thời mở CRUD thể loại cho mọi user (sẽ thêm auth sau)
-router.post('/', createGenre);
-router.put('/:id', updateGenre);
-router.delete('/:id', deleteGenre);
+// ADMIN
+function requireAdmin(req, res, next) {
+  if (!req.user?.isAdmin) {
+    return res.status(403).json({ message: 'Chỉ admin mới được phép thao tác' });
+  }
+  next();
+}
+
+router.post('/', authMiddleware, requireAdmin, createGenre);
+router.put('/:id', authMiddleware, requireAdmin, updateGenre);
+router.delete('/:id', authMiddleware, requireAdmin, deleteGenre);
 
 module.exports = router;

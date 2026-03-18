@@ -110,7 +110,12 @@ function GenresPage() {
         }
         rows.push({ genre, movies: items });
       }
-      if (!cancelled) setGenreRows(rows);
+      if (!cancelled) {
+        const sorted = rows
+          .slice()
+          .sort((a, b) => (b.movies.length - a.movies.length));
+        setGenreRows(sorted);
+      }
     };
     run().catch(() => { if (!cancelled) setGenreRows([]); });
 

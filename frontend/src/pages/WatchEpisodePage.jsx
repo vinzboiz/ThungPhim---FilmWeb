@@ -16,6 +16,10 @@ function WatchEpisodePage() {
   const { episodeId } = useParams();
   const location = useLocation();
   const fromStart = location.state?.fromStart === true;
+  const continueSecondsFromState = location.state?.continueSeconds || 0;
+  const [showContinuePrompt, setShowContinuePrompt] = useState(
+    !!location.state?.askContinue && continueSecondsFromState > 0,
+  );
   const [episode, setEpisode] = useState(null);
   const [loading, setLoading] = useState(true);
   const [suggestionModalItem, setSuggestionModalItem] = useState(null);
@@ -47,7 +51,13 @@ function WatchEpisodePage() {
   }, [episodeId]);
 
   useEffect(() => {
-    if (fromStart || !token || !profileId || !episodeId) return;
+    if (continueSecondsFromState > 0) {
+      setSavedProgress(continueSecondsFromState);
+    }
+  }, [continueSecondsFromState]);
+
+  useEffect(() => {
+    if (fromStart || !token || !profileId || !episodeId || showContinuePrompt) return;
     let cancelled = false;
     fetch(`${API_BASE}/api/watch/progress?profile_id=${profileId}&episode_id=${episodeId}`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -101,6 +111,7 @@ function WatchEpisodePage() {
   }, [saveProgress]);
 
   const applySavedProgressOnce = useCallback(() => {
+    if (showContinuePrompt) return;
     if (initialProgressApplied.current) return;
     const v = videoRef.current;
     if (fromStart) {
@@ -119,7 +130,7 @@ function WatchEpisodePage() {
       : savedProgress;
     v.currentTime = start;
     initialProgressApplied.current = true;
-  }, [savedProgress, fromStart, token, profileId, saveProgress]);
+  }, [savedProgress, fromStart, token, profileId, saveProgress, showContinuePrompt]);
 
   const handleVideoLoaded = useCallback(() => {
     applySavedProgressOnce();
@@ -148,6 +159,51 @@ function WatchEpisodePage() {
 
   return (
     <div style={{ padding: '24px', maxWidth: '900px', margin: '0 auto' }}>
+      {showContinuePrompt && savedProgress > 0 && (
+        <div className="watch-movie-continue-overlay">
+          <div className="watch-movie-continue-dialog">
+            <p>
+              Hiện bạn đang xem đến{' '}
+              <strong>{Math.floor(savedProgress / 60)} phút {Math.floor(savedProgress % 60)} giây</strong>.
+            </p>
+            <p>Bạn muốn tiếp tục xem từ vị trí này hay xem lại từ đầu?</p>
+            <div className="watch-movie-continue-actions">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowContinuePrompt(false);
+                  const v = videoRef.current;
+                  if (v && savedProgress > 0) {
+                    const duration = v.duration;
+                    const start =
+                      isFinite(duration) && duration > 0 && duration > savedProgress
+                        ? Math.min(savedProgress, duration - 1)
+                        : savedProgress;
+                    v.currentTime = start;
+                  }
+                  initialProgressApplied.current = true;
+                }}
+              >
+                Tiếp tục xem
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowContinuePrompt(false);
+                  const v = videoRef.current;
+                  initialProgressApplied.current = true;
+                  if (v) {
+                    v.currentTime = 0;
+                    saveProgress(0);
+                  }
+                }}
+              >
+                Xem lại từ đầu
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <p>
         <Link to={episode.series_id ? `/series/${episode.series_id}` : '/'} style={{ color: '#61dafb' }}>
           ← Quay lại series

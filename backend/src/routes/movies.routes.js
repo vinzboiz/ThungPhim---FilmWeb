@@ -19,13 +19,21 @@ const {
   removeMovieCast,
   getSuggestions,
 } = require('../controllers/movies.controller');
+const authMiddleware = require('../middleware/auth.middleware');
 const router = express.Router();
+
+function requireAdmin(req, res, next) {
+  if (!req.user?.isAdmin) {
+    return res.status(403).json({ message: 'Chỉ admin mới được phép thao tác' });
+  }
+  next();
+}
 
 // GET /api/movies
 router.get('/', listMovies);
 
 // POST /api/movies
-router.post('/', createMovie);
+router.post('/', authMiddleware, requireAdmin, createMovie);
 
 // GET /api/movies/top-rating?limit=10
 router.get('/top-rating', listTopRatingMovies);
@@ -59,18 +67,18 @@ router.post('/:id/like', likeMovie);
 router.delete('/:id/like', unlikeMovie);
 
 // PUT /api/movies/:id
-router.put('/:id', updateMovie);
+router.put('/:id', authMiddleware, requireAdmin, updateMovie);
 
 // DELETE /api/movies/:id
-router.delete('/:id', deleteMovie);
+router.delete('/:id', authMiddleware, requireAdmin, deleteMovie);
 
 // POST /api/movies/:id/genres – set list genres
-router.post('/:id/genres', setMovieGenres);
+router.post('/:id/genres', authMiddleware, requireAdmin, setMovieGenres);
 
 // Cast
 router.get('/:id/cast', getMovieCast);
-router.post('/:id/cast', addMovieCast);
-router.delete('/:movieId/cast/:personId', removeMovieCast);
+router.post('/:id/cast', authMiddleware, requireAdmin, addMovieCast);
+router.delete('/:movieId/cast/:personId', authMiddleware, requireAdmin, removeMovieCast);
 
 module.exports = router;
 

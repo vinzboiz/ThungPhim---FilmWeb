@@ -57,7 +57,25 @@ export async function api(method, path, body, options = {}) {
     body: body != null ? JSON.stringify(body) : undefined,
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.message || res.statusText);
+  if (!res.ok) {
+    const msg = data.message || res.statusText || '';
+    if (res.status === 401 && auth && (msg.includes('Token không hợp lệ') || msg.includes('Thiếu token'))) {
+      // token hết hạn hoặc hỏng: dọn localStorage và chuyển về trang đăng nhập
+      localStorage.removeItem('token');
+      localStorage.removeItem('profileId');
+      localStorage.removeItem('profileName');
+      localStorage.removeItem('profileAvatar');
+      localStorage.removeItem('is_admin');
+      try {
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login?reason=expired';
+        }
+      } catch {
+        // bỏ qua lỗi nếu không chạy trong browser
+      }
+    }
+    throw new Error(msg);
+  }
   return data;
 }
 
@@ -71,7 +89,24 @@ export async function apiFormData(method, path, formData, options = {}) {
     body: formData,
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.message || res.statusText);
+  if (!res.ok) {
+    const msg = data.message || res.statusText || '';
+    if (res.status === 401 && auth && (msg.includes('Token không hợp lệ') || msg.includes('Thiếu token'))) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('profileId');
+      localStorage.removeItem('profileName');
+      localStorage.removeItem('profileAvatar');
+      localStorage.removeItem('is_admin');
+      try {
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login?reason=expired';
+        }
+      } catch {
+        // ignore
+      }
+    }
+    throw new Error(msg);
+  }
   return data;
 }
 

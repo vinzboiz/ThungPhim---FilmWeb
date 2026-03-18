@@ -3,6 +3,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../../providers/AuthContext';
 import { getProfileName, getProfileAvatar } from '../../apis/client';
 import logoNetflix from '../../assets/logo/Netflix_Logo_PMS.png';
+import NotificationBell from './NotificationBell.jsx';
 
 const AVATAR_URL = (key) => `/assets/avatars/${key}.png`;
 import '../../styles/components/header.css';
@@ -30,7 +31,7 @@ function Header() {
   const searchWrapRef = useRef(null);
   const menuRef = useRef(null);
   const typedOffHomeRef = useRef(false);
-  const { isLoggedIn, logout } = useAuth();
+  const { isLoggedIn, isAdmin, logout } = useAuth();
   const profileName = getProfileName();
   const profileAvatar = getProfileAvatar();
   const navigate = useNavigate();
@@ -199,13 +200,7 @@ function Header() {
               </button>
             )}
           </div>
-          <button
-            type="button"
-            className="app-button"
-            aria-label="Thông báo"
-          >
-            <NotificationIcon />
-          </button>
+          <NotificationBell />
           <div className="header-avatar-wrap" ref={menuRef}>
             <button
               type="button"
@@ -236,7 +231,7 @@ function Header() {
                 >
                   Quản lý hồ sơ
                 </Link>
-                {isLoggedIn && (
+                {isLoggedIn && isAdmin && (
                   <Link
                     to="/admin"
                     className="header-avatar-menu-item"

@@ -24,6 +24,8 @@ function AdminSeriesDetailPage() {
     video_url: '',
     thumbnail_url: '',
   });
+  const [creatingEpisode, setCreatingEpisode] = useState(false);
+  const [uploadingVideoOverlay, setUploadingVideoOverlay] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -108,6 +110,9 @@ function AdminSeriesDetailPage() {
       return;
     }
     try {
+      setCreatingEpisode(true);
+      // overlay loading ~3s để đảm bảo video vừa upload sync xong
+      await new Promise((resolve) => setTimeout(resolve, 3000));
       const res = await fetch(`${API_BASE}/api/series/episodes`, {
         method: 'POST',
         headers: {
@@ -140,6 +145,8 @@ function AdminSeriesDetailPage() {
       reloadEpisodes(selectedSeasonId);
     } catch (err) {
       setError(err.message);
+    } finally {
+      setCreatingEpisode(false);
     }
   }
 
@@ -204,11 +211,109 @@ function AdminSeriesDetailPage() {
     }
   }
 
+  async function handleDeleteSeason(seasonId) {
+    if (!window.confirm('Bạn có chắc muốn xoá season này? Tất cả tập thuộc season có thể bị ảnh hưởng.')) {
+      return;
+    }
+    const token = getToken();
+    if (!token) {
+      setError('Cần đăng nhập admin để xoá season');
+      return;
+    }
+    try {
+      const res = await fetch(`${API_BASE}/api/series/${id}/seasons/${seasonId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || 'Xoá season thất bại');
+      setSeasons((prev) => prev.filter((s) => s.id !== seasonId));
+      if (String(selectedSeasonId) === String(seasonId)) {
+        setSelectedSeasonId('');
+        reloadEpisodes('');
+      }
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function handleDeleteEpisode(episodeId) {
+    if (!window.confirm('Bạn có chắc muốn xoá tập này?')) {
+      return;
+    }
+    const token = getToken();
+    if (!token) {
+      setError('Cần đăng nhập admin để xoá tập');
+      return;
+    }
+    try {
+      const res = await fetch(`${API_BASE}/api/series/episodes/${episodeId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || 'Xoá tập thất bại');
+      setEpisodes((prev) => prev.filter((ep) => ep.id !== episodeId));
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function handleAutoThumbnail(episodeId) {
+    const ok = window.confirm('Tạo ảnh bìa tự động từ video của tập này? Ảnh cũ sẽ bị ghi đè.');
+    if (!ok) return;
+    const token = getToken();
+    if (!token) {
+      setError('Cần đăng nhập admin để tạo ảnh bìa');
+      return;
+    }
+    try {
+      const res = await fetch(`${API_BASE}/api/upload/episode-thumbnail-from-video/${episodeId}`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || 'Tạo ảnh bìa tự động thất bại');
+      reloadEpisodes(selectedSeasonId);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   if (loading) return <div style={{ padding: '24px' }}>Đang tải series...</div>;
   if (error || !series) return <div style={{ padding: '24px', color: 'red' }}>{error || 'Không tìm thấy series'}</div>;
 
   return (
-    <div style={{ padding: '24px' }}>
+    <div style={{ padding: '24px', position: 'relative' }}>
+      {(creatingEpisode || uploadingVideoOverlay) && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+          }}
+        >
+          <div
+            style={{
+              background: '#181818',
+              padding: '16px 24px',
+              borderRadius: 8,
+              color: '#fff',
+              fontSize: 14,
+            }}
+          >
+            {creatingEpisode
+              ? 'Đang xử lý video tập và tạo tập...'
+              : 'Đang upload video tập, vui lòng đợi trong giây lát...'}
+          </div>
+        </div>
+      )}
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
         <h1 style={{ margin: 0 }}>Quản lý series: {series.title}</h1>
         <Link to={`/admin/series/${id}/edit`} style={{ padding: '8px 16px', background: '#e50914', color: '#fff', textDecoration: 'none', borderRadius: '4px', fontWeight: 500 }}>Sửa series (thông tin + cast)</Link>
@@ -246,23 +351,58 @@ function AdminSeriesDetailPage() {
 
         {seasons.length > 0 && (
           <div style={{ marginBottom: '16px' }}>
-            <strong>Chọn season để lọc tập: </strong>
-            <select
-              value={selectedSeasonId}
-              onChange={(e) => {
-                const val = e.target.value;
-                setSelectedSeasonId(val);
-                reloadEpisodes(val);
-              }}
-              style={{ marginLeft: '8px', padding: '4px 8px' }}
-            >
-              <option value="">Tất cả</option>
+            <div style={{ marginBottom: '8px' }}>
+              <strong>Chọn season để lọc tập: </strong>
+              <select
+                value={selectedSeasonId}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setSelectedSeasonId(val);
+                  reloadEpisodes(val);
+                }}
+                style={{ marginLeft: '8px', padding: '4px 8px' }}
+              >
+                <option value="">Tất cả</option>
+                {seasons.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    Season {s.season_number} {s.title ? `- ${s.title}` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0, maxWidth: 600 }}>
               {seasons.map((s) => (
-                <option key={s.id} value={s.id}>
-                  Season {s.season_number} {s.title ? `- ${s.title}` : ''}
-                </option>
+                <li
+                  key={s.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '4px 0',
+                    borderBottom: '1px solid #333',
+                  }}
+                >
+                  <span>
+                    Season {s.season_number} {s.title ? `- ${s.title}` : ''}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteSeason(s.id)}
+                    style={{
+                      padding: '4px 10px',
+                      background: '#b91c1c',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: 4,
+                      cursor: 'pointer',
+                      fontSize: 12,
+                    }}
+                  >
+                    Xoá season
+                  </button>
+                </li>
               ))}
-            </select>
+            </ul>
           </div>
         )}
       </section>
@@ -318,7 +458,10 @@ function AdminSeriesDetailPage() {
             />
           </label>
           <label>
-            Ảnh bìa (URL hoặc upload phía dưới)
+            Ảnh bìa
+            <span style={{ display: 'block', fontSize: 12, color: '#aaa' }}>
+              Bạn có 2 cách: (1) dán URL hoặc upload file ảnh bên dưới, (2) sau khi tạo tập dùng nút &quot;Ảnh bìa từ video&quot; ở danh sách tập.
+            </span>
             <input
               type="text"
               value={epForm.thumbnail_url}
@@ -350,6 +493,7 @@ function AdminSeriesDetailPage() {
                 const formData = new FormData();
                 formData.append('video', file);
                 try {
+        setUploadingVideoOverlay(true);
                   const res = await fetch(`${API_BASE}/api/upload/video`, {
                     method: 'POST',
                     headers: { Authorization: `Bearer ${token}` },
@@ -360,6 +504,11 @@ function AdminSeriesDetailPage() {
                   setEpForm((prev) => ({ ...prev, video_url: data.video_url }));
                 } catch (err) {
                   alert(err.message);
+                } finally {
+                  // giữ overlay ít nhất 3s tính từ lúc bắt đầu chọn file
+                  setTimeout(() => {
+                    setUploadingVideoOverlay(false);
+                  }, 3000);
                 }
                 e.target.value = '';
               }}
@@ -398,8 +547,8 @@ function AdminSeriesDetailPage() {
               }}
             />
           </label>
-          <button type="submit" style={{ marginTop: '8px' }}>
-            Thêm tập
+          <button type="submit" style={{ marginTop: '8px' }} disabled={creatingEpisode}>
+            {creatingEpisode ? 'Đang thêm...' : 'Thêm tập'}
           </button>
         </form>
       </section>
@@ -459,7 +608,51 @@ function AdminSeriesDetailPage() {
                   />
                 </td>
                 <td style={{ padding: '8px', borderBottom: '1px solid #eee' }}>
-                  <Link to={`/admin/series/${id}/episode/${ep.id}/edit`} style={{ padding: '6px 12px', background: '#e50914', color: '#fff', textDecoration: 'none', borderRadius: '4px', fontSize: '13px' }}>Sửa</Link>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <Link
+                      to={`/admin/series/${id}/episode/${ep.id}/edit`}
+                      style={{
+                        padding: '6px 12px',
+                        background: '#e50914',
+                        color: '#fff',
+                        textDecoration: 'none',
+                        borderRadius: '4px',
+                        fontSize: '13px',
+                      }}
+                    >
+                      Sửa
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteEpisode(ep.id)}
+                      style={{
+                        padding: '6px 10px',
+                        background: '#b91c1c',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '4px',
+                        fontSize: '13px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Xoá
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleAutoThumbnail(ep.id)}
+                      style={{
+                        padding: '6px 10px',
+                        background: '#374151',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '4px',
+                        fontSize: '13px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Ảnh bìa từ video
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}

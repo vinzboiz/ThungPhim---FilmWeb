@@ -1,4 +1,5 @@
 const { pool } = require('../config/db');
+const { createNotification } = require('./notifications.controller');
 
 async function listFavorites(req, res) {
   const { profile_id } = req.query;
@@ -22,6 +23,7 @@ async function listFavorites(req, res) {
 }
 
 async function addFavorite(req, res) {
+  const userId = req.user?.id;
   const { profile_id, movie_id } = req.body;
   if (!profile_id || !movie_id) {
     return res.status(400).json({ message: 'profile_id và movie_id là bắt buộc' });
@@ -31,6 +33,9 @@ async function addFavorite(req, res) {
       'INSERT IGNORE INTO favorites (profile_id, movie_id) VALUES (?, ?)',
       [profile_id, movie_id]
     );
+    if (userId) {
+      createNotification(userId, 'favorite_add', 'Bạn đã thêm một phim vào danh sách yêu thích.').catch(() => {});
+    }
     res.status(201).json({ message: 'Đã thêm vào yêu thích' });
   } catch (err) {
     console.error('addFavorite error:', err);

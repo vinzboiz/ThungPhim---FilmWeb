@@ -12,6 +12,7 @@ function AdminAddMoviePage() {
     thumbnail_url: '',
     banner_url: '',
     trailer_url: '',
+    trailer_youtube_url: '',
     video_url: '',
     rating: '',
     age_rating: '',
@@ -23,13 +24,18 @@ function AdminAddMoviePage() {
   const [genres, setGenres] = useState([]);
   const [countries, setCountries] = useState([]);
   const [selectedGenreIds, setSelectedGenreIds] = useState([]);
+  const [persons, setPersons] = useState([]);
+  const [actorIds, setActorIds] = useState([]);
+  const [directorIds, setDirectorIds] = useState([]);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     async function load() {
       try {
-        const [gRes, cRes] = await Promise.all([
+        const [gRes, cRes, pRes] = await Promise.all([
           fetch(`${API_BASE}/api/genres`),
           fetch(`${API_BASE}/api/countries`),
+          fetch(`${API_BASE}/api/persons`),
         ]);
         if (gRes.ok) {
           const data = await gRes.json();
@@ -38,6 +44,10 @@ function AdminAddMoviePage() {
         if (cRes.ok) {
           const data = await cRes.json();
           setCountries(Array.isArray(data) ? data : []);
+        }
+        if (pRes.ok) {
+          const data = await pRes.json();
+          setPersons(Array.isArray(data) ? data : []);
         }
       } catch {
         // bỏ qua lỗi
@@ -164,6 +174,9 @@ function AdminAddMoviePage() {
     setError('');
 
     try {
+      setSubmitting(true);
+      // overlay loading ~3s để đảm bảo video/ảnh vừa upload sync xong
+      await new Promise((resolve) => setTimeout(resolve, 3000));
       const created = await api('POST', '/api/movies', {
         ...form,
         release_year: form.release_year ? Number(form.release_year) : null,
@@ -181,6 +194,26 @@ function AdminAddMoviePage() {
         });
       }
 
+      // thêm diễn viên & đạo diễn nếu có chọn
+      if (movieId && token) {
+        for (const pid of actorIds) {
+          await api(
+            'POST',
+            `/api/movies/${movieId}/cast`,
+            { person_id: Number(pid), role: 'actor' },
+            { auth: true },
+          );
+        }
+        for (const pid of directorIds) {
+          await api(
+            'POST',
+            `/api/movies/${movieId}/cast`,
+            { person_id: Number(pid), role: 'director' },
+            { auth: true },
+          );
+        }
+      }
+
       setMessage(`Đã thêm phim với ID ${movieId || ''}`);
       setForm({
         title: '',
@@ -191,6 +224,7 @@ function AdminAddMoviePage() {
         thumbnail_url: '',
         banner_url: '',
         trailer_url: '',
+        trailer_youtube_url: '',
         video_url: '',
         rating: '',
         age_rating: '',
@@ -198,14 +232,43 @@ function AdminAddMoviePage() {
         is_featured: false,
       });
       setSelectedGenreIds([]);
+      setActorIds([]);
+      setDirectorIds([]);
     } catch (err) {
       console.error(err);
       setError(err.message);
+    } finally {
+      setSubmitting(false);
     }
   }
 
   return (
     <div className="admin-page admin-page--narrow">
+      {submitting && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+          }}
+        >
+          <div
+            style={{
+              background: '#181818',
+              padding: '16px 24px',
+              borderRadius: 8,
+              color: '#fff',
+              fontSize: 14,
+            }}
+          >
+            Đang xử lý video và lưu phim...
+          </div>
+        </div>
+      )}
       <h1>Thêm phim mới (Admin đơn giản)</h1>
       {message && <p className="admin-msg-success">{message}</p>}
       {error && <p className="admin-msg-error">{error}</p>}
@@ -281,7 +344,7 @@ function AdminAddMoviePage() {
         <fieldset className="admin-fieldset">
           <legend>Trailer</legend>
           <label className="admin-form-label">
-            Chọn file từ máy — upload lên server, gán vào Trailer URL
+            Chọn file từ máy — upload lên server, gán vào Trailer URL (dùng cho Hero banner)
             <input
               type="file"
               accept="video/*,audio/*"
@@ -289,17 +352,27 @@ function AdminAddMoviePage() {
             />
             <span className="admin-fieldset-hint">
               Muốn phim xuất hiện ở banner trang chủ, bắt buộc phải upload file (MP4/MP3…) tại đây.
-              Link YouTube chỉ dùng để xem ở trang chi tiết, KHÔNG dùng cho banner.
+              Field này chỉ dành cho file local dùng cho Hero banner.
             </span>
           </label>
           <label className="admin-form-label">
-            Trailer URL (YouTube hoặc đường dẫn đã upload)
+            Trailer URL (local, sau khi upload — dùng cho Hero)
             <input
               type="text"
               name="trailer_url"
               value={form.trailer_url}
               onChange={handleChange}
-              placeholder="https://youtube.com/... hoặc /uploads/videos/..."
+              placeholder="/uploads/videos/..."
+            />
+          </label>
+          <label className="admin-form-label">
+            Trailer YouTube URL (dùng cho trang chi tiết)
+            <input
+              type="text"
+              name="trailer_youtube_url"
+              value={form.trailer_youtube_url}
+              onChange={handleChange}
+              placeholder="https://youtube.com/..."
             />
           </label>
         </fieldset>
@@ -365,6 +438,61 @@ function AdminAddMoviePage() {
             </div>
           </fieldset>
         )}
+        {persons.length > 0 && (
+          <fieldset className="admin-fieldset">
+            <legend>Diễn viên &amp; Đạo diễn</legend>
+            <div className="admin-two-col">
+              <div>
+                <h4 className="admin-subtitle">Diễn viên</h4>
+                <div className="admin-checkbox-scroll">
+                  {persons
+                    .filter((p) => p.person_type !== 'director')
+                    .map((p) => {
+                      const checked = actorIds.includes(p.id);
+                      return (
+                        <label key={p.id} className="admin-label-inline">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(e) => {
+                              setActorIds((prev) =>
+                                e.target.checked ? [...prev, p.id] : prev.filter((id) => id !== p.id),
+                              );
+                            }}
+                          />{' '}
+                          {p.name}
+                        </label>
+                      );
+                    })}
+                </div>
+              </div>
+              <div>
+                <h4 className="admin-subtitle">Đạo diễn</h4>
+                <div className="admin-checkbox-scroll">
+                  {persons
+                    .filter((p) => p.person_type === 'director')
+                    .map((p) => {
+                      const checked = directorIds.includes(p.id);
+                      return (
+                        <label key={p.id} className="admin-label-inline">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(e) => {
+                              setDirectorIds((prev) =>
+                                e.target.checked ? [...prev, p.id] : prev.filter((id) => id !== p.id),
+                              );
+                            }}
+                          />{' '}
+                          {p.name}
+                        </label>
+                      );
+                    })}
+                </div>
+              </div>
+            </div>
+          </fieldset>
+        )}
         <label className="admin-label-inline">
           <input
             type="checkbox"
@@ -374,8 +502,8 @@ function AdminAddMoviePage() {
           />
           Featured (hiển thị nổi bật)
         </label>
-        <button type="submit" className="admin-btn-submit">
-          Lưu phim
+        <button type="submit" className="admin-btn-submit" disabled={submitting}>
+          {submitting ? 'Đang lưu...' : 'Lưu phim'}
         </button>
       </form>
     </div>

@@ -1,4 +1,6 @@
 const { pool } = require('../config/db');
+const path = require('path');
+const { spawn } = require('child_process');
 const { normalize, escapeLike } = require('../utils/normalize');
 
 // PUBLIC QUERIES
@@ -171,7 +173,19 @@ async function getEpisodeById(req, res) {
 // ADMIN – CRUD SERIES
 
 async function createSeries(req, res) {
-  const { title, description, thumbnail_url, banner_url, trailer_url, age_rating, is_featured, release_year, country_code, duration_minutes } = req.body;
+  const {
+    title,
+    description,
+    thumbnail_url,
+    banner_url,
+    trailer_url,
+    trailer_youtube_url,
+    age_rating,
+    is_featured,
+    release_year,
+    country_code,
+    duration_minutes,
+  } = req.body;
 
   if (!title) {
     return res.status(400).json({ message: 'title là bắt buộc' });
@@ -179,14 +193,15 @@ async function createSeries(req, res) {
 
   try {
     const [result] = await pool.query(
-      `INSERT INTO series (title, description, thumbnail_url, banner_url, trailer_url, age_rating, is_featured, release_year, country_code, duration_minutes, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+      `INSERT INTO series (title, description, thumbnail_url, banner_url, trailer_url, trailer_youtube_url, age_rating, is_featured, release_year, country_code, duration_minutes, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
       [
         title,
         description || null,
         thumbnail_url || null,
         banner_url || null,
         trailer_url || null,
+        trailer_youtube_url || null,
         age_rating || null,
         is_featured ? 1 : 0,
         release_year != null ? Number(release_year) : null,
@@ -204,7 +219,19 @@ async function createSeries(req, res) {
 
 async function updateSeries(req, res) {
   const { id } = req.params;
-  const { title, description, thumbnail_url, banner_url, trailer_url, age_rating, is_featured, release_year, country_code, duration_minutes } = req.body;
+  const {
+    title,
+    description,
+    thumbnail_url,
+    banner_url,
+    trailer_url,
+    trailer_youtube_url,
+    age_rating,
+    is_featured,
+    release_year,
+    country_code,
+    duration_minutes,
+  } = req.body;
 
   try {
     const [rows] = await pool.query('SELECT id FROM series WHERE id = ?', [id]);
@@ -219,6 +246,7 @@ async function updateSeries(req, res) {
       thumbnail_url || null,
       banner_url || null,
       trailer_url ?? null,
+      trailer_youtube_url ?? null,
       age_rating || null,
       typeof is_featured === 'boolean' ? (is_featured ? 1 : 0) : null,
       (release_year !== undefined && release_year !== '' && release_year != null) ? Number(release_year) : null,
@@ -234,6 +262,7 @@ async function updateSeries(req, res) {
            thumbnail_url = COALESCE(?, thumbnail_url),
            banner_url = COALESCE(?, banner_url),
            trailer_url = COALESCE(?, trailer_url),
+           trailer_youtube_url = COALESCE(?, trailer_youtube_url),
            age_rating = COALESCE(?, age_rating),
            is_featured = COALESCE(?, is_featured),
            release_year = COALESCE(?, release_year),
@@ -375,7 +404,50 @@ async function createEpisode(req, res) {
         release_date || null,
       ]
     );
-    const [rows] = await pool.query('SELECT * FROM episodes WHERE id = ?', [result.insertId]);
+    const episodeId = result.insertId;
+
+    // Nếu chưa có thumbnail nhưng đã có video local trong /uploads/videos -> tự cắt 1 frame làm ảnh bìa
+    if (!thumbnail_url && video_url && !video_url.startsWith('http')) {
+      try {
+        const uploadsRoot = path.join(__dirname, '..', '..', 'uploads');
+        const imagesDir = path.join(uploadsRoot, 'images');
+        const relativeVideoPath = video_url.startsWith('/') ? video_url.slice(1) : video_url;
+        const videoPath = path.join(__dirname, '..', '..', relativeVideoPath);
+
+        const fileName = `ep-${episodeId}-${Date.now()}-${Math.round(Math.random() * 1e6)}.jpg`;
+        const outputPath = path.join(imagesDir, fileName);
+        const imageUrl = `/uploads/images/${fileName}`;
+
+        const randomSeconds = 5 + Math.floor(Math.random() * 20);
+        const ssArg = String(randomSeconds);
+
+        await new Promise((resolve, reject) => {
+          const ff = spawn('ffmpeg', [
+            '-ss',
+            ssArg,
+            '-i',
+            videoPath,
+            '-frames:v',
+            '1',
+            '-q:v',
+            '2',
+            outputPath,
+          ]);
+          ff.on('error', (err) => reject(err));
+          ff.on('close', (code) => {
+            if (code === 0) resolve();
+            else reject(new Error(`ffmpeg exited with code ${code}`));
+          });
+        });
+
+        await pool.query('UPDATE episodes SET thumbnail_url = ? WHERE id = ?', [imageUrl, episodeId]);
+      } catch (thumbErr) {
+        console.error('auto thumbnail on createEpisode error:', thumbErr);
+        // không chặn tạo tập nếu cắt ảnh thất bại
+      }
+    }
+
+    const [rows] = await pool.query('SELECT * FROM episodes WHERE id = ?', [episodeId]);
     res.status(201).json(rows[0]);
   } catch (err) {
     console.error('createEpisode error:', err);

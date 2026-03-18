@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { API_BASE, api, getToken, getProfileId } from '../../apis/client';
+import { pushClientNotification } from '../../utils/notificationsClient';
 import '../../styles/components/home-movie-row.css';
 
 const HOVER_PANEL_W = 320;
@@ -36,7 +37,7 @@ function ChevronDownIcon({ className }) {
   );
 }
 
-function HomeMovieRow({ title, items, onOpenInfo }) {
+function HomeMovieRow({ title, items, onOpenInfo, onItemRemoved, onPlay }) {
   const scrollRef = useRef(null);
   const [hoveredItem, setHoveredItem] = useState(null);
   const [cardRect, setCardRect] = useState(null);
@@ -135,7 +136,9 @@ function HomeMovieRow({ title, items, onOpenInfo }) {
   const handlePlay = (e, item) => {
     e.preventDefault();
     e.stopPropagation();
-    if (item.type === 'episode' && item.series_id) {
+    if (onPlay) {
+      onPlay(item, e);
+    } else if (item.type === 'episode' && item.series_id) {
       navigate(`/series/${item.series_id}`);
     } else if (item.type === 'series') {
       navigate(`/series/${item.id}`);
@@ -161,10 +164,37 @@ function HomeMovieRow({ title, items, onOpenInfo }) {
           await api('POST', '/api/watchlist', { profile_id: Number(profileId), movie_id: Number(item.id) });
         }
         setHoverAddedToWatchlist(true);
+        pushClientNotification(
+          'watchlist_add',
+          type === 'series'
+            ? 'Bạn đã thêm một series vào danh sách của tôi.'
+            : 'Bạn đã thêm một phim vào danh sách của tôi.',
+        );
       }
     } catch (err) {
       console.error(err);
     }
+  };
+
+  const handleRemoveFromRow = async (e, item) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!onItemRemoved) return;
+    if (!token || !profileId) {
+      onItemRemoved(item);
+      return;
+    }
+    try {
+      if (title === 'Danh sách của tôi') {
+        const type = item.type === 'series' ? 'series' : 'movie';
+        await api('DELETE', `/api/watchlist/${item.id}?profile_id=${profileId}&type=${type}`);
+      } else if (title === 'Yêu thích') {
+        await api('DELETE', `/api/favorites/${item.id}?profile_id=${profileId}`);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+    onItemRemoved(item);
   };
 
   const handleLike = async (e, item) => {
@@ -265,6 +295,16 @@ function HomeMovieRow({ title, items, onOpenInfo }) {
           onMouseLeave={handlePanelLeave}
         >
           <div className="home-movie-row-hover-img-wrap">
+            {onItemRemoved && (
+              <button
+                type="button"
+                className="home-movie-row-remove-btn"
+                onClick={(e) => handleRemoveFromRow(e, hoveredItem)}
+                aria-label="Xóa khỏi danh sách"
+              >
+                ×
+              </button>
+            )}
             {getImageUrl(hoveredItem) ? (
               <img src={getImageUrl(hoveredItem)} alt="" className="home-movie-row-hover-img" />
             ) : (

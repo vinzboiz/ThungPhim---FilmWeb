@@ -126,21 +126,35 @@ async function listContinueWatching(req, res) {
 
   try {
     const [movies] = await pool.query(
-      `SELECT wh.movie_id AS id, m.title, m.thumbnail_url, MAX(wh.progress_seconds) AS progress_seconds, 'movie' AS type
+      `SELECT
+         wh.movie_id AS id,
+         m.title,
+         m.thumbnail_url,
+         m.banner_url,
+         MAX(wh.progress_seconds) AS progress_seconds,
+         'movie' AS type
        FROM watch_history wh
        JOIN movies m ON m.id = wh.movie_id
        WHERE wh.profile_id = ? AND wh.movie_id IS NOT NULL
-       GROUP BY wh.movie_id
+       GROUP BY wh.movie_id, m.title, m.thumbnail_url, m.banner_url
+       HAVING MAX(wh.progress_seconds) > 0
        ORDER BY MAX(wh.watched_at) DESC
        LIMIT 15`,
       [profile_id]
     );
     const [episodes] = await pool.query(
-      `SELECT wh.episode_id AS id, e.title, e.thumbnail_url, e.series_id, MAX(wh.progress_seconds) AS progress_seconds, 'episode' AS type
+      `SELECT
+         wh.episode_id AS id,
+         e.title,
+         e.thumbnail_url,
+         e.series_id,
+         MAX(wh.progress_seconds) AS progress_seconds,
+         'episode' AS type
        FROM watch_history wh
        JOIN episodes e ON e.id = wh.episode_id
        WHERE wh.profile_id = ? AND wh.episode_id IS NOT NULL
-       GROUP BY wh.episode_id
+       GROUP BY wh.episode_id, e.title, e.thumbnail_url, e.series_id
+       HAVING MAX(wh.progress_seconds) > 0
        ORDER BY MAX(wh.watched_at) DESC
        LIMIT 15`,
       [profile_id]

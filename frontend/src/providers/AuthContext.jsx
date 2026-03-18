@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import { api, getToken, getProfileId, setProfileInfo, setAdminFlag } from '../apis/client';
+import { api, getToken, getProfileId, setProfileInfo, setAdminFlag, getIsAdmin } from '../apis/client';
+import { pushClientNotification } from '../utils/notificationsClient';
 
 const AuthContext = createContext(null);
 
@@ -7,6 +8,7 @@ export function AuthProvider({ children }) {
   const [token, setTokenState] = useState(() => localStorage.getItem('token'));
   const [user, setUser] = useState(null);
   const [profileId, setProfileIdState] = useState(() => localStorage.getItem('profileId'));
+  const [isAdmin, setIsAdminState] = useState(() => getIsAdmin());
 
   useEffect(() => {
     if (token) {
@@ -14,6 +16,7 @@ export function AuthProvider({ children }) {
     } else {
       localStorage.removeItem('token');
       setUser(null);
+      setIsAdminState(false);
     }
   }, [token]);
 
@@ -30,8 +33,11 @@ export function AuthProvider({ children }) {
     setTokenState(data.token);
     if (data.user) {
       setUser(data.user);
-      setAdminFlag(!!data.user.is_admin);
+      const admin = !!data.user.is_admin;
+      setAdminFlag(admin);
+      setIsAdminState(admin);
     }
+    pushClientNotification('login', 'Bạn đã đăng nhập vào ThungPhim.');
     return data;
   };
 
@@ -46,6 +52,7 @@ export function AuthProvider({ children }) {
     setProfileIdState(null);
     setProfileInfo(null, null, null);
     setAdminFlag(false);
+    setIsAdminState(false);
   };
 
   const setProfileId = (id, name, avatar) => {
@@ -58,6 +65,7 @@ export function AuthProvider({ children }) {
     user,
     profileId: profileId != null ? profileId : getProfileId(),
     isLoggedIn: !!(token || getToken()),
+    isAdmin,
     login,
     register,
     logout,

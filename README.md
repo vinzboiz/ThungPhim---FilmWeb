@@ -55,7 +55,9 @@ Open `http://localhost:5173` in your browser.
 | **Accounts & profiles** | Register, login, multiple profiles per account. \"My List\" and Favorites per profile. |
 | **My List / Favorites** | Same horizontal cards as home; hover panel with Play / + / Like / More, opens HeroBanner modal. |
 | **Genres** | Filter by genre, year, country; supports both movies and series; genre banner when coming from detail page. |
-| **Admin area** | Manage movies, series, episodes, genres, people. Add/edit movies & series, upload poster, banner, trailer, main video. |
+| **Notifications** | In‑app notification bell for actions like adding to watchlist, favorites, etc. |
+| **Watch history** | \"Continue watching\" row and history page powered by watch progress. |
+| **Admin area** | Manage movies, series, episodes, genres, people. Add/edit movies & series, upload poster, banner, trailer, main video, and auto‑generate episode thumbnails from video. |
 
 ---
 
@@ -176,7 +178,8 @@ MOVIE/
 | **Upload** | `POST /api/upload/image`, `POST /api/upload/video` | Upload image (`image` field) or video (`video` field) |
 | **Watchlist** | `GET /api/watchlist?profile_id=`, `POST /api/watchlist` | User watchlist |
 | **Favorites** | `GET /api/favorites?profile_id=`, `POST /api/favorites` | User favorites |
-| **Watch** | `GET /api/watch/continue`, `POST /api/watch/progress` | Continue watching, save watch progress |
+| **Watch** | `GET /api/watch/continue`, `POST /api/watch/progress`, `GET /api/watch/history` | Continue watching, history, save watch progress |
+| **Notifications** | `GET /api/notifications?profile_id=`, `POST /api/notifications/mark-read` | Per‑profile in‑app notifications |
 
 Full route definitions live in `backend/src/routes/`.
 
