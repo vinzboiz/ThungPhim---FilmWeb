@@ -88,31 +88,28 @@ cd ThungPhim---FilmWeb
 
 ### Bước 2: Tạo database MySQL
 
-1. Mở **MySQL** (hoặc MySQL Workbench, phpMyAdmin, DBeaver...).
-2. Chạy lệnh tạo database:
+1. Mở **HeidiSQL** (từ Laragon) hoặc MySQL client khác.
+2. Kết nối MySQL, rồi chạy:
 
 ```sql
 CREATE DATABASE thungphim CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
+*HeidiSQL:* chuột phải vào kết nối → **Create new** → **Database** → tên `thungphim` cũng được.
+
 ### Bước 3: Khởi tạo bảng (schema)
 
 Chạy file SQL có sẵn trong project để tạo tất cả bảng:
 
-**Cách 1 — Dòng lệnh:**
-```bash
-mysql -u root -p thungphim < backend-spring/src/main/resources/schema.sql
-```
-*(Nhập mật khẩu MySQL khi được hỏi)*
+**Dùng HeidiSQL (Laragon):**
+1. Mở **HeidiSQL** từ Laragon.
+2. Kết nối MySQL (user `root`, password thường để trống với Laragon).
+3. Tạo database: chuột phải → **Create new** → **Database** → đặt tên `thungphim`.
+4. Chọn database `thungphim` ở cột trái.
+5. Vào **File** → **Run SQL file...** → chọn file `backend-spring/src/main/resources/schema.sql`.
+6. Bấm **Run** (F9) để chạy.
 
-**Cách 2 — Trong MySQL client:**
-```sql
-USE thungphim;
-SOURCE backend-spring/src/main/resources/schema.sql;
-```
-*(Dùng đường dẫn tuyệt đối nếu cần, ví dụ: `SOURCE D:/CODING/MOVIE/backend-spring/src/main/resources/schema.sql;`)*
-
-**Cách 3 — Copy/paste:** Mở file `backend-spring/src/main/resources/schema.sql` và chạy toàn bộ nội dung trong MySQL Workbench hoặc công cụ tương tự.
+**Cách khác — Copy/paste:** Mở file `backend-spring/src/main/resources/schema.sql` bằng Notepad, copy toàn bộ, dán vào tab **Query** trong HeidiSQL rồi bấm F9.
 
 ### Bước 4: Cấu hình backend
 
