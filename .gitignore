@@ -21,6 +21,7 @@ backend/dist/
 npm-debug.log*
 
 # Uploads (media files - optional: remove if you want to track them)
+uploads/
 backend/uploads/
 
 # IDE / OS
