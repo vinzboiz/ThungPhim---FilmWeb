@@ -3,6 +3,12 @@ node_modules/
 frontend/node_modules/
 backend/node_modules/
 
+# Node.js backend (migrated to backend-spring) - chỉ ignore backend, KHÔNG ignore backend-spring
+/backend/
+
+# Maven build output - backend-spring
+backend-spring/target/
+
 # Environment
 .env
 .env.local
