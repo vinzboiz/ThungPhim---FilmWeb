@@ -75,24 +75,48 @@ Mở `http://localhost:5173` trên trình duyệt.
 
 ---
 
-## 📦 Detailed setup
+## 📦 Hướng dẫn clone và thiết lập (cho người mới)
 
-### 1. Clone repo and enter folder
+**Yêu cầu:** Java 17+, Maven, Node.js 18+, MySQL 8+
+
+### Bước 1: Clone repository
 
 ```bash
 git clone https://github.com/vinzboiz/ThungPhim---FilmWeb.git
 cd ThungPhim---FilmWeb
 ```
 
-### 2. Create MySQL database
+### Bước 2: Tạo database MySQL
+
+1. Mở **MySQL** (hoặc MySQL Workbench, phpMyAdmin, DBeaver...).
+2. Chạy lệnh tạo database:
 
 ```sql
 CREATE DATABASE thungphim CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
-### 3. Backend configuration (backend-spring)
+### Bước 3: Khởi tạo bảng (schema)
 
-Cấu hình qua biến môi trường hoặc file `backend-spring/src/main/resources/application.properties`:
+Chạy file SQL có sẵn trong project để tạo tất cả bảng:
+
+**Cách 1 — Dòng lệnh:**
+```bash
+mysql -u root -p thungphim < backend-spring/src/main/resources/schema.sql
+```
+*(Nhập mật khẩu MySQL khi được hỏi)*
+
+**Cách 2 — Trong MySQL client:**
+```sql
+USE thungphim;
+SOURCE backend-spring/src/main/resources/schema.sql;
+```
+*(Dùng đường dẫn tuyệt đối nếu cần, ví dụ: `SOURCE D:/CODING/MOVIE/backend-spring/src/main/resources/schema.sql;`)*
+
+**Cách 3 — Copy/paste:** Mở file `backend-spring/src/main/resources/schema.sql` và chạy toàn bộ nội dung trong MySQL Workbench hoặc công cụ tương tự.
+
+### Bước 4: Cấu hình backend
+
+Chỉnh sửa `backend-spring/src/main/resources/application.properties` nếu MySQL của bạn khác mặc định:
 
 | Biến | Mặc định | Mô tả |
 |------|----------|-------|
@@ -101,17 +125,15 @@ Cấu hình qua biến môi trường hoặc file `backend-spring/src/main/resou
 | `DB_USER` | root | MySQL user |
 | `DB_PASSWORD` | (trống) | MySQL password |
 | `DB_NAME` | thungphim | Tên database |
-| `jwt.secret` | (có fallback) | Secret JWT — **phải ≥ 32 ký tự** cho HS256 |
+| `jwt.secret` | (có sẵn) | Secret JWT — **nên đổi ≥ 32 ký tự** cho production |
 
-Thư mục upload: `uploads/` ở root project. Tạo nếu chưa có:
+### Bước 5: Tạo thư mục upload
 
 ```bash
 mkdir -p uploads/images uploads/videos
 ```
 
-*Lưu ý: Database schema phải tồn tại trước (tạo bảng qua migration SQL hoặc JPA `ddl-auto=create` khi lần đầu chạy).*
-
-### 4. Chạy backend
+### Bước 6: Chạy backend
 
 ```bash
 cd backend-spring
@@ -120,19 +142,29 @@ mvn spring-boot:run
 
 API: `http://localhost:5000`
 
-### 5. Cài đặt frontend
+### Bước 7: Cài đặt frontend
 
 ```bash
 cd frontend
 npm install
 ```
 
-### 6. Chạy ứng dụng
+### Bước 8: Chạy ứng dụng
 
 - **Terminal 1:** `cd backend-spring && mvn spring-boot:run` → API: `http://localhost:5000`
 - **Terminal 2:** `cd frontend && npm run dev` → Web: `http://localhost:5173`
 
 Nếu backend chạy host/port khác, cập nhật `API_BASE` trong `frontend/src/apis/client.js`.
+
+**Tóm tắt nhanh:**
+```bash
+git clone https://github.com/vinzboiz/ThungPhim---FilmWeb.git
+cd ThungPhim---FilmWeb
+# Tạo DB + chạy schema.sql (xem Bước 2-3)
+mkdir -p uploads/images uploads/videos
+cd backend-spring && mvn spring-boot:run    # Terminal 1
+cd frontend && npm install && npm run dev   # Terminal 2
+```
 
 ---
 
