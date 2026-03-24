@@ -90,19 +90,23 @@ public class SeriesService {
                 id
         );
 
-        List<Map<String, Object>> castRows = jdbcTemplate.queryForList(
-                "SELECT sc.person_id, sc.role, p.name, p.avatar_url " +
-                        "FROM series_cast sc JOIN persons p ON p.id = sc.person_id WHERE sc.series_id = ?",
-                id
-        );
         List<Map<String, Object>> cast = new ArrayList<>();
-        for (Map<String, Object> r : castRows) {
-            cast.add(Map.of(
-                    "id", asInt(r.get("person_id")),
-                    "name", Objects.toString(r.get("name"), ""),
-                    "avatar_url", r.get("avatar_url"),
-                    "role", r.get("role")
-            ));
+        try {
+            List<Map<String, Object>> castRows = jdbcTemplate.queryForList(
+                    "SELECT sc.person_id, sc.role, p.name, p.avatar_url " +
+                            "FROM series_cast sc JOIN persons p ON p.id = sc.person_id WHERE sc.series_id = ?",
+                    id
+            );
+            for (Map<String, Object> r : castRows) {
+                cast.add(Map.of(
+                        "id", asInt(r.get("person_id")),
+                        "name", Objects.toString(r.get("name"), ""),
+                        "avatar_url", r.get("avatar_url"),
+                        "role", r.get("role")
+                ));
+            }
+        } catch (org.springframework.dao.DataAccessException ignored) {
+            // series_cast table may not exist yet; return empty cast
         }
 
         Integer reviewCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM reviews WHERE series_id = ?", Integer.class, id);
@@ -310,8 +314,8 @@ public class SeriesService {
     public Map<String, Object> createSeries(Map<String, Object> body) {
         String title = body.get("title") == null ? null : String.valueOf(body.get("title")).trim();
         jdbcTemplate.update(
-                "INSERT INTO series (title, description, thumbnail_url, banner_url, trailer_url, trailer_youtube_url, age_rating, is_featured, release_year, country_code, duration_minutes, created_at, updated_at) " +
-                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())",
+                "INSERT INTO series (title, description, thumbnail_url, banner_url, trailer_url, trailer_youtube_url, age_rating, is_featured, view_count, like_count, release_year, country_code, duration_minutes, created_at, updated_at) " +
+                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?, ?, NOW(3), NOW(3))",
                 title,
                 body.get("description"),
                 body.get("thumbnail_url"),
@@ -326,7 +330,9 @@ public class SeriesService {
         );
         Integer id = jdbcTemplate.queryForObject("SELECT LAST_INSERT_ID()", Integer.class);
         if (title != null && !title.isBlank()) {
-            jdbcTemplate.update("UPDATE series SET title_normalized = ? WHERE id = ?", normalize(title), id);
+            try {
+                jdbcTemplate.update("UPDATE series SET title_normalized = ? WHERE id = ?", normalize(title), id);
+            } catch (Exception ignored) {}
         }
         List<Map<String, Object>> rows = jdbcTemplate.queryForList("SELECT * FROM series WHERE id = ?", id);
         return rows.isEmpty() ? Map.of("id", id) : rows.get(0);
@@ -349,7 +355,7 @@ public class SeriesService {
                         "release_year = COALESCE(?, release_year), " +
                         "country_code = COALESCE(?, country_code), " +
                         "duration_minutes = COALESCE(?, duration_minutes), " +
-                        "updated_at = NOW() " +
+                        "updated_at = NOW(3) " +
                         "WHERE id = ?",
                 body.get("title"),
                 body.get("description"),
@@ -367,7 +373,9 @@ public class SeriesService {
 
         if (body.containsKey("title") && body.get("title") != null) {
             String title = String.valueOf(body.get("title")).trim();
-            jdbcTemplate.update("UPDATE series SET title_normalized = ? WHERE id = ?", normalize(title), id);
+            try {
+                jdbcTemplate.update("UPDATE series SET title_normalized = ? WHERE id = ?", normalize(title), id);
+            } catch (Exception ignored) {}
         }
 
         List<Map<String, Object>> out = jdbcTemplate.queryForList("SELECT * FROM series WHERE id = ?", id);
@@ -401,7 +409,7 @@ public class SeriesService {
 
         jdbcTemplate.update(
                 "INSERT INTO episodes (series_id, season_id, episode_number, title, description, duration_minutes, thumbnail_url, video_url, release_date, created_at, updated_at) " +
-                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())",
+                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(3), NOW(3))",
                 sId,
                 seasonId,
                 episodeNumber,
@@ -463,7 +471,7 @@ public class SeriesService {
                         "thumbnail_url = COALESCE(?, thumbnail_url), " +
                         "video_url = COALESCE(?, video_url), " +
                         "release_date = COALESCE(?, release_date), " +
-                        "updated_at = NOW() " +
+                        "updated_at = NOW(3) " +
                         "WHERE id = ?",
                 toIntOrNull(body, "season_id"),
                 toIntOrNull(body, "episode_number"),
@@ -489,20 +497,28 @@ public class SeriesService {
         return true;
     }
 
-    // ADMIN - seasons CRUD
+    // ADMIN - seasons CRUD - JDBC thuần, đúng 5 cột: id, series_id, season_number, title, description (không có created_at)
     public Map<String, Object> createSeason(int seriesId, Map<String, Object> body) {
         Integer seasonNumber = toInt(body.get("season_number"));
-        if (seasonNumber == null) return null;
+        if (seasonNumber == null || seasonNumber < 1) return null;
+
+        List<Map<String, Object>> seriesCheck = jdbcTemplate.queryForList("SELECT id FROM series WHERE id = ?", seriesId);
+        if (seriesCheck.isEmpty()) {
+            throw new IllegalArgumentException("Series không tồn tại (id=" + seriesId + ")");
+        }
+
+        String title = body.get("title") != null ? String.valueOf(body.get("title")).trim() : null;
+        String description = body.get("description") != null ? String.valueOf(body.get("description")).trim() : null;
+        if (title != null && title.isEmpty()) title = null;
+        if (description != null && description.isEmpty()) description = null;
+
         jdbcTemplate.update(
-                "INSERT INTO seasons (series_id, season_number, title, description, created_at, updated_at) VALUES (?, ?, ?, ?, NOW(), NOW())",
-                seriesId,
-                seasonNumber,
-                body.get("title"),
-                body.get("description")
+                "INSERT INTO seasons (series_id, season_number, title, description) VALUES (?, ?, ?, ?)",
+                seriesId, seasonNumber, title, description
         );
         Integer id = jdbcTemplate.queryForObject("SELECT LAST_INSERT_ID()", Integer.class);
-        List<Map<String, Object>> rows = jdbcTemplate.queryForList("SELECT * FROM seasons WHERE id = ?", id);
-        return rows.isEmpty() ? Map.of("id", id) : rows.get(0);
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList("SELECT id, series_id, season_number, title, description FROM seasons WHERE id = ?", id);
+        return rows.isEmpty() ? Map.of("id", id, "series_id", seriesId, "season_number", seasonNumber, "title", title, "description", description) : rows.get(0);
     }
 
     public Map<String, Object> updateSeason(int seasonId, Map<String, Object> body) {
@@ -512,8 +528,7 @@ public class SeriesService {
                 "UPDATE seasons SET " +
                         "season_number = COALESCE(?, season_number), " +
                         "title = COALESCE(?, title), " +
-                        "description = COALESCE(?, description), " +
-                        "updated_at = NOW() " +
+                        "description = COALESCE(?, description) " +
                         "WHERE id = ?",
                 toIntOrNull(body, "season_number"),
                 body.get("title"),

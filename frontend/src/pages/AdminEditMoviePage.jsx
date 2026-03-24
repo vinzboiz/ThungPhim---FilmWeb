@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { api, API_BASE, getToken } from '../apis/client';
+import { api, API_BASE, getToken, normalizeUploadError } from '../apis/client';
 
 function AdminEditMoviePage() {
   const { id } = useParams();
@@ -151,17 +151,23 @@ function AdminEditMoviePage() {
   }
 
   async function uploadVideoToServer(file, fieldToSet) {
+    const token = getToken();
+    if (!token) {
+      setError('Cần đăng nhập admin để upload video');
+      throw new Error('Cần đăng nhập admin để upload video');
+    }
     setError('');
     setMessage('Đang upload video...');
     const formData = new FormData();
     formData.append('video', file);
     const res = await fetch(`${API_BASE}/api/upload/video`, {
       method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
       body: formData,
     });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      throw new Error(data.message || 'Upload video thất bại');
+      throw new Error(data.message || 'Upload video thất bại.');
     }
     const data = await res.json();
     setForm((prev) => ({ ...prev, [fieldToSet]: data.video_url }));
@@ -185,7 +191,7 @@ function AdminEditMoviePage() {
     try {
       await uploadVideoToServer(file, 'trailer_url');
     } catch (err) {
-      setError(err.message);
+      setError(normalizeUploadError(err));
     }
     e.target.value = '';
   }
@@ -194,10 +200,16 @@ function AdminEditMoviePage() {
     setUploadingImage(true);
     setError('');
     try {
+      const token = getToken();
+      if (!token) {
+        setError('Cần đăng nhập admin để upload ảnh');
+        return;
+      }
       const fd = new FormData();
       fd.append('image', file);
       const res = await fetch(`${API_BASE}/api/upload/image`, {
         method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
         body: fd,
       });
       if (!res.ok) {

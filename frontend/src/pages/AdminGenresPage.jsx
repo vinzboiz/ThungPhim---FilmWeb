@@ -65,10 +65,16 @@ function AdminGenresPage() {
     setError('');
     setUploading(true);
     try {
+      const token = getToken();
+      if (!token) {
+        setError('Cần đăng nhập admin để upload ảnh');
+        return;
+      }
       const formData = new FormData();
       formData.append('image', file);
       const res = await fetch(`${API_BASE}/api/upload/image`, {
         method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
         body: formData,
       });
       if (!res.ok) {

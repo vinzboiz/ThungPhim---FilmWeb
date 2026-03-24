@@ -66,14 +66,26 @@ public class PersonsService {
     public Map<String, Object> create(String name, String avatarUrl, String biography, String personType) {
         String nameTrim = name.trim();
         String type = "director".equals(personType) ? "director" : "actor";
-        jdbcTemplate.update(
-                "INSERT INTO persons (name, name_normalized, avatar_url, biography, person_type) VALUES (?, ?, ?, ?, ?)",
-                nameTrim,
-                normalize(nameTrim),
-                emptyToNull(avatarUrl),
-                emptyToNull(biography),
-                type
-        );
+        try {
+            jdbcTemplate.update(
+                    "INSERT INTO persons (name, name_normalized, avatar_url, biography, person_type) VALUES (?, ?, ?, ?, ?)",
+                    nameTrim,
+                    normalize(nameTrim),
+                    emptyToNull(avatarUrl),
+                    emptyToNull(biography),
+                    type
+            );
+        } catch (Exception e) {
+            if (e.getMessage() != null && e.getMessage().contains("name_normalized")) {
+                jdbcTemplate.update(
+                        "INSERT INTO persons (name, avatar_url, biography, person_type) VALUES (?, ?, ?, ?)",
+                        nameTrim,
+                        emptyToNull(avatarUrl),
+                        emptyToNull(biography),
+                        type
+                );
+            } else throw e;
+        }
         Integer id = jdbcTemplate.queryForObject("SELECT LAST_INSERT_ID()", Integer.class);
         List<Map<String, Object>> rows = jdbcTemplate.queryForList("SELECT * FROM persons WHERE id = ?", id);
         return rows.isEmpty() ? Map.of("id", id) : rows.get(0);
@@ -84,15 +96,28 @@ public class PersonsService {
         if (rows.isEmpty()) return null;
         String nameTrim = name.trim();
         String type = "director".equals(personType) ? "director" : "actor";
-        jdbcTemplate.update(
-                "UPDATE persons SET name = ?, name_normalized = ?, avatar_url = ?, biography = ?, person_type = ? WHERE id = ?",
-                nameTrim,
-                normalize(nameTrim),
-                emptyToNull(avatarUrl),
-                emptyToNull(biography),
-                type,
-                id
-        );
+        try {
+            jdbcTemplate.update(
+                    "UPDATE persons SET name = ?, name_normalized = ?, avatar_url = ?, biography = ?, person_type = ? WHERE id = ?",
+                    nameTrim,
+                    normalize(nameTrim),
+                    emptyToNull(avatarUrl),
+                    emptyToNull(biography),
+                    type,
+                    id
+            );
+        } catch (Exception e) {
+            if (e.getMessage() != null && e.getMessage().contains("name_normalized")) {
+                jdbcTemplate.update(
+                        "UPDATE persons SET name = ?, avatar_url = ?, biography = ?, person_type = ? WHERE id = ?",
+                        nameTrim,
+                        emptyToNull(avatarUrl),
+                        emptyToNull(biography),
+                        type,
+                        id
+                );
+            } else throw e;
+        }
         List<Map<String, Object>> updated = jdbcTemplate.queryForList("SELECT * FROM persons WHERE id = ?", id);
         return updated.isEmpty() ? Map.of("id", id) : updated.get(0);
     }

@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
-import { api, API_BASE, getToken } from '../apis/client';
+import { api, apiFormData, API_BASE, getToken, normalizeUploadError } from '../apis/client';
+import { useAuth } from '../providers/AuthContext.jsx';
 import '../styles/pages/admin-common.css';
 
 function AdminAddMoviePage() {
+  const { token: ctxToken } = useAuth();
   const [form, setForm] = useState({
     title: '',
     short_intro: '',
@@ -56,20 +58,21 @@ function AdminAddMoviePage() {
     load();
   }, []);
 
+  /** Token từ context + localStorage (tránh race sau khi đăng nhập) */
+  function authToken() {
+    return ctxToken || getToken();
+  }
+
   async function uploadVideoToServer(file, fieldToSet) {
+    if (!authToken()) {
+      setError('Cần đăng nhập admin để upload video');
+      throw new Error('Cần đăng nhập admin để upload video');
+    }
     setError('');
     setMessage('Đang upload...');
     const formData = new FormData();
     formData.append('video', file);
-    const res = await fetch(`${API_BASE}/api/upload/video`, {
-      method: 'POST',
-      body: formData,
-    });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      throw new Error(data.message || 'Upload thất bại');
-    }
-    const data = await res.json();
+    const data = await apiFormData('POST', '/api/upload/video', formData);
     setForm((prev) => ({ ...prev, [fieldToSet]: data.video_url }));
     return data.video_url;
   }
@@ -82,7 +85,7 @@ function AdminAddMoviePage() {
       setMessage('Upload video chính thành công. Đường dẫn đã gán vào Video URL.');
     } catch (err) {
       console.error(err);
-      setError(err.message);
+      setError(normalizeUploadError(err));
     }
     e.target.value = '';
   }
@@ -96,7 +99,7 @@ function AdminAddMoviePage() {
       setMessage('Upload trailer thành công. Đường dẫn đã gán vào Trailer URL.');
     } catch (err) {
       console.error(err);
-      setError(err.message);
+      setError(normalizeUploadError(err));
     }
     e.target.value = '';
   }
@@ -104,24 +107,17 @@ function AdminAddMoviePage() {
   async function handleThumbnailFileChange(e) {
     const file = e.target.files[0];
     if (!file) return;
+    if (!authToken()) {
+      setError('Cần đăng nhập admin để upload ảnh');
+      return;
+    }
     setError('');
     setMessage('Đang upload ảnh bìa...');
 
     try {
       const formData = new FormData();
       formData.append('image', file);
-
-      const res = await fetch(`${API_BASE}/api/upload/image`, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.message || 'Upload ảnh thất bại');
-      }
-
-      const data = await res.json();
+      const data = await apiFormData('POST', '/api/upload/image', formData);
       setForm((prev) => ({ ...prev, thumbnail_url: data.image_url }));
       setMessage('Upload ảnh thành công. Đường dẫn đã được gán vào Thumbnail URL.');
     } catch (err) {
@@ -133,24 +129,17 @@ function AdminAddMoviePage() {
   async function handleBannerFileChange(e) {
     const file = e.target.files[0];
     if (!file) return;
+    if (!authToken()) {
+      setError('Cần đăng nhập admin để upload ảnh');
+      return;
+    }
     setError('');
     setMessage('Đang upload ảnh banner...');
 
     try {
       const formData = new FormData();
       formData.append('image', file);
-
-      const res = await fetch(`${API_BASE}/api/upload/image`, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.message || 'Upload ảnh banner thất bại');
-      }
-
-      const data = await res.json();
+      const data = await apiFormData('POST', '/api/upload/image', formData);
       setForm((prev) => ({ ...prev, banner_url: data.image_url }));
       setMessage('Upload ảnh banner thành công. Đường dẫn đã được gán vào Banner URL.');
     } catch (err) {
@@ -173,6 +162,11 @@ function AdminAddMoviePage() {
     setMessage('');
     setError('');
 
+    if (!authToken()) {
+      setError('Cần đăng nhập admin để thêm phim');
+      return;
+    }
+
     try {
       setSubmitting(true);
       // overlay loading ~3s để đảm bảo video/ảnh vừa upload sync xong
@@ -182,35 +176,24 @@ function AdminAddMoviePage() {
         release_year: form.release_year ? Number(form.release_year) : null,
         duration_minutes: form.duration_minutes ? Number(form.duration_minutes) : null,
         rating: form.rating ? Number(form.rating) : null,
-      }, { auth: false });
+      });
 
       const movieId = created.id || created.insertId;
 
-      // nếu chọn genres và có token admin → set genres cho movie
-      const token = getToken();
-      if (movieId && token && selectedGenreIds.length > 0) {
+      // nếu chọn genres → set genres cho movie
+      if (movieId && selectedGenreIds.length > 0) {
         await api('POST', `/api/movies/${movieId}/genres`, {
           genre_ids: selectedGenreIds.map((g) => Number(g)).filter((g) => g > 0),
         });
       }
 
       // thêm diễn viên & đạo diễn nếu có chọn
-      if (movieId && token) {
+      if (movieId) {
         for (const pid of actorIds) {
-          await api(
-            'POST',
-            `/api/movies/${movieId}/cast`,
-            { person_id: Number(pid), role: 'actor' },
-            { auth: true },
-          );
+          await api('POST', `/api/movies/${movieId}/cast`, { person_id: Number(pid), role: 'actor' });
         }
         for (const pid of directorIds) {
-          await api(
-            'POST',
-            `/api/movies/${movieId}/cast`,
-            { person_id: Number(pid), role: 'director' },
-            { auth: true },
-          );
+          await api('POST', `/api/movies/${movieId}/cast`, { person_id: Number(pid), role: 'director' });
         }
       }
 

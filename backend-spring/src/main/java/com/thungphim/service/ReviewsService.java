@@ -72,8 +72,7 @@ public class ReviewsService {
                             "VALUES (?, NULL, NULL, ?, NULL, ?, ?, NOW())",
                     userId, episodeId, rating, (comment == null || comment.isBlank()) ? null : comment
             );
-            Double avg = avgRatingLatestPerUser("episode_id", episodeId);
-            jdbcTemplate.update("UPDATE episodes SET rating = ? WHERE id = ?", avg, episodeId);
+            // episodes table does not have rating column; only movies/series have aggregate rating
         }
     }
 

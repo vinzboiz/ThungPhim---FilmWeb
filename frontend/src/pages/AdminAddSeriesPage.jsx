@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { API_BASE, getToken } from '../apis/client';
+import { API_BASE, getToken, normalizeUploadError } from '../apis/client';
 import '../styles/pages/admin-common.css';
 
 function AdminAddSeriesPage() {
@@ -58,9 +58,18 @@ function AdminAddSeriesPage() {
     setUploading(true);
     setError('');
     try {
+      const token = getToken();
+      if (!token) {
+        setError('Cần đăng nhập admin để upload ảnh');
+        return;
+      }
       const fd = new FormData();
       fd.append('image', file);
-      const res = await fetch(`${API_BASE}/api/upload/image`, { method: 'POST', body: fd });
+      const res = await fetch(`${API_BASE}/api/upload/image`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
+      });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
         throw new Error(d.message || 'Upload ảnh thất bại');
@@ -78,9 +87,18 @@ function AdminAddSeriesPage() {
     setUploading(true);
     setError('');
     try {
+      const token = getToken();
+      if (!token) {
+        setError('Cần đăng nhập admin để upload trailer');
+        return;
+      }
       const fd = new FormData();
       fd.append('video', file);
-      const res = await fetch(`${API_BASE}/api/upload/video`, { method: 'POST', body: fd });
+      const res = await fetch(`${API_BASE}/api/upload/video`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
+      });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
         throw new Error(d.message || 'Upload trailer thất bại');
@@ -88,7 +106,7 @@ function AdminAddSeriesPage() {
       const data = await res.json();
       setForm((prev) => ({ ...prev, trailer_url: data.video_url }));
     } catch (err) {
-      setError(err.message);
+      setError(normalizeUploadError(err));
     } finally {
       setUploading(false);
     }

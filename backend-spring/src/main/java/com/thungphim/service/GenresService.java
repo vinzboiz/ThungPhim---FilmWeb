@@ -104,6 +104,53 @@ public class GenresService {
         return result;
     }
 
+    public Map<String, Object> createGenre(String name, String description, String thumbnailUrl) {
+        if (name == null || name.isBlank()) {
+            throw new IllegalArgumentException("name là bắt buộc");
+        }
+        List<Map<String, Object>> existing = jdbcTemplate.queryForList("SELECT id FROM genres WHERE name = ?", name.trim());
+        if (!existing.isEmpty()) {
+            throw new IllegalStateException("Genre đã tồn tại");
+        }
+        jdbcTemplate.update(
+                "INSERT INTO genres (name, description, thumbnail_url) VALUES (?, ?, ?)",
+                name.trim(),
+                (description != null && !description.isBlank()) ? description.trim() : null,
+                (thumbnailUrl != null && !thumbnailUrl.isBlank()) ? thumbnailUrl.trim() : null
+        );
+        Integer id = jdbcTemplate.queryForObject("SELECT LAST_INSERT_ID()", Integer.class);
+        return jdbcTemplate.queryForMap("SELECT id, name, description, thumbnail_url FROM genres WHERE id = ?", id);
+    }
+
+    public Map<String, Object> updateGenre(int id, String name, String description, String thumbnailUrl) {
+        if (name == null || name.isBlank()) {
+            throw new IllegalArgumentException("name là bắt buộc");
+        }
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList("SELECT id FROM genres WHERE id = ?", id);
+        if (rows.isEmpty()) {
+            return null;
+        }
+        jdbcTemplate.update(
+                "UPDATE genres SET name = ?, description = ?, thumbnail_url = ? WHERE id = ?",
+                name.trim(),
+                (description != null && !description.isBlank()) ? description.trim() : null,
+                (thumbnailUrl != null && !thumbnailUrl.isBlank()) ? thumbnailUrl.trim() : null,
+                id
+        );
+        return jdbcTemplate.queryForMap("SELECT id, name, description, thumbnail_url FROM genres WHERE id = ?", id);
+    }
+
+    public boolean deleteGenre(int id) {
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList("SELECT id FROM genres WHERE id = ?", id);
+        if (rows.isEmpty()) {
+            return false;
+        }
+        jdbcTemplate.update("DELETE FROM movie_genres WHERE genre_id = ?", id);
+        jdbcTemplate.update("DELETE FROM series_genres WHERE genre_id = ?", id);
+        jdbcTemplate.update("DELETE FROM genres WHERE id = ?", id);
+        return true;
+    }
+
     private static int clamp(int value, int min, int max) {
         return Math.max(min, Math.min(max, value));
     }

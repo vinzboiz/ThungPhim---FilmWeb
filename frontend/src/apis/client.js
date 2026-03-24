@@ -1,7 +1,10 @@
 const API_BASE = 'http://localhost:5000';
 
 function getToken() {
-  return localStorage.getItem('token');
+  const raw = localStorage.getItem('token');
+  if (raw == null || raw === '') return null;
+  const t = String(raw).trim();
+  return t.length > 0 ? t : null;
 }
 
 function getProfileId() {
@@ -108,6 +111,15 @@ export async function apiFormData(method, path, formData, options = {}) {
     throw new Error(msg);
   }
   return data;
+}
+
+/** Thông báo thân thiện khi upload fail do ERR_CONNECTION_RESET / Failed to fetch */
+export function normalizeUploadError(err) {
+  const msg = err?.message || String(err);
+  if (/failed to fetch|load failed|networkerror|connection reset|err_connection_reset/i.test(msg)) {
+    return 'Kết nối bị ngắt khi upload. Có thể do: (1) File quá lớn (>100GB), (2) Mạng không ổn định, (3) Server timeout. Thử file nhỏ hơn hoặc dán URL thay vì upload.';
+  }
+  return msg;
 }
 
 export { API_BASE, getToken, getProfileId, getProfileName, getProfileAvatar, setProfileInfo, getIsAdmin, setAdminFlag };

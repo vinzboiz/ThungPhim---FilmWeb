@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { API_BASE, getToken } from '../apis/client';
+import { API_BASE, getToken, normalizeUploadError } from '../apis/client';
 
 function AdminEditEpisodePage() {
   const { id: seriesId, episodeId } = useParams();
@@ -107,12 +107,12 @@ function AdminEditEpisodePage() {
         headers: getToken() ? { Authorization: `Bearer ${getToken()}` } : {},
         body: fd,
       });
-      if (!res.ok) throw new Error('Upload thất bại');
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || 'Upload thất bại');
       const url = type === 'video' ? data.video_url : data.image_url;
       setForm((prev) => ({ ...prev, [field]: url }));
     } catch (err) {
-      setError(err.message);
+      setError(normalizeUploadError(err));
     } finally {
       setUploading(false);
       if (type === 'video') {

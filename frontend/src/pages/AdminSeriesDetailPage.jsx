@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { API_BASE, getToken } from '../apis/client';
+import { API_BASE, getToken, normalizeUploadError } from '../apis/client';
 
 function AdminSeriesDetailPage() {
   const { id } = useParams();
@@ -91,7 +91,7 @@ function AdminSeriesDetailPage() {
         }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.message || 'Tạo season thất bại');
+      if (!res.ok) throw new Error(data.message || 'Tạo season thất bại. Kiểm tra: Season number >= 1, series tồn tại.');
       setSeasons((prev) => [...prev, data]);
       setSeasonNumber('');
       setSeasonTitle('');
@@ -171,7 +171,7 @@ function AdminSeriesDetailPage() {
       if (!res.ok) throw new Error(data.message || 'Upload video tập thất bại');
       reloadEpisodes(selectedSeasonId);
     } catch (err) {
-      alert(err.message);
+      alert(normalizeUploadError(err));
     }
   }
 
@@ -259,29 +259,6 @@ function AdminSeriesDetailPage() {
     }
   }
 
-  async function handleAutoThumbnail(episodeId) {
-    const ok = window.confirm('Tạo ảnh bìa tự động từ video của tập này? Ảnh cũ sẽ bị ghi đè.');
-    if (!ok) return;
-    const token = getToken();
-    if (!token) {
-      setError('Cần đăng nhập admin để tạo ảnh bìa');
-      return;
-    }
-    try {
-      const res = await fetch(`${API_BASE}/api/upload/episode-thumbnail-from-video/${episodeId}`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.message || 'Tạo ảnh bìa tự động thất bại');
-      reloadEpisodes(selectedSeasonId);
-    } catch (err) {
-      setError(err.message);
-    }
-  }
-
   if (loading) return <div style={{ padding: '24px' }}>Đang tải series...</div>;
   if (error || !series) return <div style={{ padding: '24px', color: 'red' }}>{error || 'Không tìm thấy series'}</div>;
 
@@ -325,6 +302,7 @@ function AdminSeriesDetailPage() {
         <form onSubmit={handleCreateSeason} style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
           <input
             type="number"
+            min="1"
             placeholder="Season number"
             value={seasonNumber}
             onChange={(e) => setSeasonNumber(e.target.value)}
@@ -344,7 +322,7 @@ function AdminSeriesDetailPage() {
             onChange={(e) => setSeasonDesc(e.target.value)}
             style={{ flex: 2, padding: '4px 8px' }}
           />
-          <button type="submit" disabled={!seasonNumber} style={{ padding: '4px 12px' }}>
+          <button type="submit" disabled={!seasonNumber || Number(seasonNumber) < 1} style={{ padding: '4px 12px' }}>
             Thêm season
           </button>
         </form>
@@ -460,7 +438,7 @@ function AdminSeriesDetailPage() {
           <label>
             Ảnh bìa
             <span style={{ display: 'block', fontSize: 12, color: '#aaa' }}>
-              Bạn có 2 cách: (1) dán URL hoặc upload file ảnh bên dưới, (2) sau khi tạo tập dùng nút &quot;Ảnh bìa từ video&quot; ở danh sách tập.
+              Dán URL hoặc upload file ảnh bên dưới.
             </span>
             <input
               type="text"
@@ -503,7 +481,7 @@ function AdminSeriesDetailPage() {
                   if (!res.ok) throw new Error(data.message || 'Upload video thất bại');
                   setEpForm((prev) => ({ ...prev, video_url: data.video_url }));
                 } catch (err) {
-                  alert(err.message);
+                  alert(normalizeUploadError(err));
                 } finally {
                   // giữ overlay ít nhất 3s tính từ lúc bắt đầu chọn file
                   setTimeout(() => {
@@ -554,110 +532,81 @@ function AdminSeriesDetailPage() {
       </section>
 
       <section>
-        <h2>Danh sách tập</h2>
+        <h2>Danh sách tập theo season</h2>
         {episodes.length === 0 && <p>Chưa có tập nào.</p>}
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr>
-              <th style={{ borderBottom: '1px solid #ccc', padding: '8px', textAlign: 'left' }}>ID</th>
-              <th style={{ borderBottom: '1px solid #ccc', padding: '8px', textAlign: 'left' }}>Season</th>
-              <th style={{ borderBottom: '1px solid #ccc', padding: '8px', textAlign: 'left' }}>Số tập</th>
-              <th style={{ borderBottom: '1px solid #ccc', padding: '8px', textAlign: 'left' }}>Tiêu đề</th>
-              <th style={{ borderBottom: '1px solid #ccc', padding: '8px', textAlign: 'left' }}>Thời lượng</th>
-              <th style={{ borderBottom: '1px solid #ccc', padding: '8px', textAlign: 'left' }}>Ảnh bìa</th>
-              <th style={{ borderBottom: '1px solid #ccc', padding: '8px', textAlign: 'left' }}>Video</th>
-              <th style={{ borderBottom: '1px solid #ccc', padding: '8px', textAlign: 'left' }}>Upload video</th>
-              <th style={{ borderBottom: '1px solid #ccc', padding: '8px', textAlign: 'left' }}>Upload ảnh</th>
-              <th style={{ borderBottom: '1px solid #ccc', padding: '8px', textAlign: 'left' }}>Thao tác</th>
-            </tr>
-          </thead>
-          <tbody>
-            {episodes.map((ep) => (
-              <tr key={ep.id}>
-                <td style={{ padding: '8px', borderBottom: '1px solid #eee' }}>{ep.id}</td>
-                <td style={{ padding: '8px', borderBottom: '1px solid #eee' }}>{ep.season_id || '-'}</td>
-                <td style={{ padding: '8px', borderBottom: '1px solid #eee' }}>{ep.episode_number || '-'}</td>
-                <td style={{ padding: '8px', borderBottom: '1px solid #eee' }}>{ep.title}</td>
-                <td style={{ padding: '8px', borderBottom: '1px solid #eee' }}>{ep.duration_minutes != null ? `${ep.duration_minutes} phút` : '-'}</td>
-                <td style={{ padding: '8px', borderBottom: '1px solid #eee' }}>
-                  {ep.thumbnail_url ? (
-                    <img
-                      src={`${API_BASE}${ep.thumbnail_url}`}
-                      alt={ep.title}
-                      style={{ width: '70px', height: 'auto', borderRadius: '4px' }}
-                    />
-                  ) : (
-                    <span style={{ color: '#999' }}>Chưa có</span>
-                  )}
-                </td>
-                <td style={{ padding: '8px', borderBottom: '1px solid #eee' }}>
-                  {ep.video_url ? <span style={{ fontSize: '12px' }}>{ep.video_url}</span> : <span style={{ color: '#999' }}>Chưa có</span>}
-                </td>
-                <td style={{ padding: '8px', borderBottom: '1px solid #eee' }}>
-                  <input
-                    type="file"
-                    accept="video/*"
-                    onChange={(e) => handleUploadEpisodeVideo(ep.id, e.target.files[0])}
-                  />
-                </td>
-                <td style={{ padding: '8px', borderBottom: '1px solid #eee' }}>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => handleUploadEpisodeThumbnail(ep.id, e.target.files[0])}
-                  />
-                </td>
-                <td style={{ padding: '8px', borderBottom: '1px solid #eee' }}>
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    <Link
-                      to={`/admin/series/${id}/episode/${ep.id}/edit`}
-                      style={{
-                        padding: '6px 12px',
-                        background: '#e50914',
-                        color: '#fff',
-                        textDecoration: 'none',
-                        borderRadius: '4px',
-                        fontSize: '13px',
-                      }}
-                    >
-                      Sửa
-                    </Link>
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteEpisode(ep.id)}
-                      style={{
-                        padding: '6px 10px',
-                        background: '#b91c1c',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: '4px',
-                        fontSize: '13px',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      Xoá
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleAutoThumbnail(ep.id)}
-                      style={{
-                        padding: '6px 10px',
-                        background: '#374151',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: '4px',
-                        fontSize: '13px',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      Ảnh bìa từ video
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        {(() => {
+          const bySeason = {};
+          episodes.forEach((ep) => {
+            const key = ep.season_id != null ? String(ep.season_id) : '_none';
+            if (!bySeason[key]) bySeason[key] = [];
+            bySeason[key].push(ep);
+          });
+          const sortedSeasons = [...seasons].sort((a, b) => (a.season_number ?? 0) - (b.season_number ?? 0));
+          const order = selectedSeasonId
+            ? (bySeason[String(selectedSeasonId)]?.length ? [String(selectedSeasonId)] : [])
+            : [...sortedSeasons.map((s) => String(s.id)), '_none'].filter((k) => bySeason[k]?.length > 0);
+          return order.map((seasonKey) => {
+            const eps = (bySeason[seasonKey] || []).sort((a, b) => (a.episode_number ?? 0) - (b.episode_number ?? 0));
+            const seasonInfo = seasonKey === '_none' ? null : seasons.find((s) => String(s.id) === seasonKey);
+            const title = seasonKey === '_none' ? 'Không thuộc season' : `Season ${seasonInfo?.season_number ?? '?'}${seasonInfo?.title ? ` - ${seasonInfo.title}` : ''}`;
+            return (
+              <div key={seasonKey} style={{ marginBottom: '32px' }}>
+                <h3 style={{ margin: '0 0 12px 0', color: '#e50914', fontSize: '18px' }}>{title}</h3>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr>
+                      <th style={{ borderBottom: '1px solid #ccc', padding: '8px', textAlign: 'left' }}>ID</th>
+                      <th style={{ borderBottom: '1px solid #ccc', padding: '8px', textAlign: 'left' }}>Số tập</th>
+                      <th style={{ borderBottom: '1px solid #ccc', padding: '8px', textAlign: 'left' }}>Tiêu đề</th>
+                      <th style={{ borderBottom: '1px solid #ccc', padding: '8px', textAlign: 'left' }}>Thời lượng</th>
+                      <th style={{ borderBottom: '1px solid #ccc', padding: '8px', textAlign: 'left' }}>Ảnh bìa</th>
+                      <th style={{ borderBottom: '1px solid #ccc', padding: '8px', textAlign: 'left' }}>Video</th>
+                      <th style={{ borderBottom: '1px solid #ccc', padding: '8px', textAlign: 'left' }}>Upload video</th>
+                      <th style={{ borderBottom: '1px solid #ccc', padding: '8px', textAlign: 'left' }}>Upload ảnh</th>
+                      <th style={{ borderBottom: '1px solid #ccc', padding: '8px', textAlign: 'left' }}>Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {eps.map((ep) => (
+                      <tr key={ep.id}>
+                        <td style={{ padding: '8px', borderBottom: '1px solid #333' }}>{ep.id}</td>
+                        <td style={{ padding: '8px', borderBottom: '1px solid #333' }}>{ep.episode_number ?? '-'}</td>
+                        <td style={{ padding: '8px', borderBottom: '1px solid #333' }}>{ep.title}</td>
+                        <td style={{ padding: '8px', borderBottom: '1px solid #333' }}>{ep.duration_minutes != null ? `${ep.duration_minutes} phút` : '-'}</td>
+                        <td style={{ padding: '8px', borderBottom: '1px solid #333' }}>
+                          {ep.thumbnail_url ? (
+                            <img src={`${API_BASE}${ep.thumbnail_url}`} alt={ep.title} style={{ width: '70px', height: 'auto', borderRadius: '4px' }} />
+                          ) : (
+                            <span style={{ color: '#999' }}>Chưa có</span>
+                          )}
+                        </td>
+                        <td style={{ padding: '8px', borderBottom: '1px solid #333' }}>
+                          {ep.video_url ? <span style={{ fontSize: '12px' }}>{ep.video_url}</span> : <span style={{ color: '#999' }}>Chưa có</span>}
+                        </td>
+                        <td style={{ padding: '8px', borderBottom: '1px solid #333' }}>
+                          <input type="file" accept="video/*" onChange={(e) => handleUploadEpisodeVideo(ep.id, e.target.files[0])} />
+                        </td>
+                        <td style={{ padding: '8px', borderBottom: '1px solid #333' }}>
+                          <input type="file" accept="image/*" onChange={(e) => handleUploadEpisodeThumbnail(ep.id, e.target.files[0])} />
+                        </td>
+                        <td style={{ padding: '8px', borderBottom: '1px solid #333' }}>
+                          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                            <Link to={`/admin/series/${id}/episode/${ep.id}/edit`} style={{ padding: '6px 12px', background: '#e50914', color: '#fff', textDecoration: 'none', borderRadius: '4px', fontSize: '13px' }}>
+                              Sửa
+                            </Link>
+                            <button type="button" onClick={() => handleDeleteEpisode(ep.id)} style={{ padding: '6px 10px', background: '#b91c1c', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '13px', cursor: 'pointer' }}>
+                              Xoá
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            );
+          });
+        })()}
       </section>
     </div>
   );

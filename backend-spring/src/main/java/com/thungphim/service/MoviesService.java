@@ -3,7 +3,9 @@ package com.thungphim.service;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
+import java.sql.Timestamp;
 import java.text.Normalizer;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -346,8 +348,8 @@ public class MoviesService {
     public Map<String, Object> createMovie(Map<String, Object> body) {
         String title = body.get("title") == null ? null : String.valueOf(body.get("title")).trim();
         jdbcTemplate.update(
-                "INSERT INTO movies (title, short_intro, description, release_year, duration_minutes, thumbnail_url, banner_url, trailer_url, trailer_youtube_url, video_url, rating, age_rating, country_code, is_featured) " +
-                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO movies (title, short_intro, description, release_year, duration_minutes, thumbnail_url, banner_url, trailer_url, trailer_youtube_url, video_url, rating, age_rating, country_code, is_featured, view_count, like_count, created_at, updated_at) " +
+                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, NOW(3), NOW(3))",
                 title,
                 body.get("short_intro"),
                 body.get("description"),
@@ -365,7 +367,11 @@ public class MoviesService {
         );
         Integer id = jdbcTemplate.queryForObject("SELECT LAST_INSERT_ID()", Integer.class);
         if (title != null && !title.isBlank()) {
-            jdbcTemplate.update("UPDATE movies SET title_normalized = ? WHERE id = ?", normalize(title), id);
+            try {
+                jdbcTemplate.update("UPDATE movies SET title_normalized = ? WHERE id = ?", normalize(title), id);
+            } catch (Exception ignored) {
+                // DB cũ chưa có cột title_normalized — bỏ qua, INSERT phim vẫn thành công
+            }
         }
         List<Map<String, Object>> rows = jdbcTemplate.queryForList("SELECT * FROM movies WHERE id = ?", id);
         return rows.isEmpty() ? Map.of("id", id) : rows.get(0);
@@ -390,7 +396,8 @@ public class MoviesService {
                         "rating = COALESCE(?, rating), " +
                         "age_rating = COALESCE(?, age_rating), " +
                         "country_code = COALESCE(?, country_code), " +
-                        "is_featured = COALESCE(?, is_featured) " +
+                        "is_featured = COALESCE(?, is_featured), " +
+                        "updated_at = ? " +
                         "WHERE id = ?",
                 body.get("title"),
                 body.get("short_intro"),
@@ -406,12 +413,17 @@ public class MoviesService {
                 body.get("age_rating"),
                 body.get("country_code"),
                 toBoolOrNull(body, "is_featured"),
+                Timestamp.from(Instant.now()),
                 movieId
         );
 
         if (body.containsKey("title") && body.get("title") != null) {
             String title = String.valueOf(body.get("title")).trim();
-            jdbcTemplate.update("UPDATE movies SET title_normalized = ? WHERE id = ?", normalize(title), movieId);
+            try {
+                jdbcTemplate.update("UPDATE movies SET title_normalized = ? WHERE id = ?", normalize(title), movieId);
+            } catch (Exception ignored) {
+                // DB cũ chưa có cột title_normalized
+            }
         }
 
         List<Map<String, Object>> rows = jdbcTemplate.queryForList("SELECT * FROM movies WHERE id = ?", movieId);

@@ -29,6 +29,25 @@ public class UploadService {
         return save(file, videosDir, "/uploads/videos/");
     }
 
+    /** Resolve đường dẫn file từ URL (vd: /uploads/videos/xxx.mp4) -> Path tuyệt đối */
+    public Path resolvePathFromUrl(String url) {
+        if (url == null || url.isBlank()) return null;
+        String rel = url.startsWith("/") ? url.substring(1) : url;
+        if (rel.startsWith("uploads/videos/")) {
+            String filename = rel.substring("uploads/videos/".length());
+            return Paths.get(videosDir, filename).toAbsolutePath().normalize();
+        }
+        if (rel.startsWith("uploads/images/")) {
+            String filename = rel.substring("uploads/images/".length());
+            return Paths.get(imagesDir, filename).toAbsolutePath().normalize();
+        }
+        return Paths.get(rel).toAbsolutePath().normalize();
+    }
+
+    public Path getImagesDirPath() {
+        return Paths.get(imagesDir).toAbsolutePath().normalize();
+    }
+
     private String save(MultipartFile file, String dir, String urlPrefix) throws IOException {
         if (file == null || file.isEmpty()) {
             return null;

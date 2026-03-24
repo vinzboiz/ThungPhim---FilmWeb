@@ -199,9 +199,19 @@ public class SeriesController {
     @PostMapping("/{id}/seasons")
     public ResponseEntity<?> createSeason(@PathVariable int id, @RequestBody Map<String, Object> body) {
         requireAdmin();
-        Map<String, Object> s = seriesService.createSeason(id, body == null ? Map.of() : body);
-        if (s == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "season_number là bắt buộc");
-        return ResponseEntity.status(HttpStatus.CREATED).body(s);
+        try {
+            Map<String, Object> s = seriesService.createSeason(id, body == null ? Map.of() : body);
+            if (s == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "season_number là bắt buộc (phải là số >= 1)");
+            return ResponseEntity.status(HttpStatus.CREATED).body(s);
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage());
+        } catch (org.springframework.dao.DuplicateKeyException e) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Season số này đã tồn tại cho series");
+        } catch (Exception e) {
+            String msg = e.getCause() != null ? e.getCause().getMessage() : e.getMessage();
+            if (msg == null) msg = e.getClass().getSimpleName();
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Lỗi tạo season: " + msg);
+        }
     }
 
     @PutMapping("/{id}/seasons/{seasonId}")
