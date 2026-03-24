@@ -41,6 +41,19 @@ export function AuthProvider({ children }) {
     return data;
   };
 
+  const loginWithGoogle = async (idToken) => {
+    const data = await api('POST', '/api/auth/google', { id_token: idToken }, { auth: false });
+    setTokenState(data.token);
+    if (data.user) {
+      setUser(data.user);
+      const admin = !!data.user.is_admin;
+      setAdminFlag(admin);
+      setIsAdminState(admin);
+    }
+    pushClientNotification('login', 'Bạn đã đăng nhập vào ThungPhim (Google).');
+    return data;
+  };
+
   const register = async (email, password, full_name) => {
     const data = await api('POST', '/api/auth/register', { email, password, full_name }, { auth: false });
     return data;
@@ -67,6 +80,7 @@ export function AuthProvider({ children }) {
     isLoggedIn: !!(token || getToken()),
     isAdmin,
     login,
+    loginWithGoogle,
     register,
     logout,
     setProfileId,

@@ -18,6 +18,7 @@ import AdminSeriesDetailPage from '../pages/AdminSeriesDetailPage.jsx';
 import AdminEditSeriesPage from '../pages/AdminEditSeriesPage.jsx';
 import AdminEditEpisodePage from '../pages/AdminEditEpisodePage.jsx';
 import AdminDashboardPage from '../pages/AdminDashboardPage.jsx';
+import AdminUsersPage from '../pages/AdminUsersPage.jsx';
 import SearchPage from '../pages/SearchPage.jsx';
 import GenresPage from '../pages/GenresPage.jsx';
 import WatchEpisodePage from '../pages/WatchEpisodePage.jsx';
@@ -315,6 +316,16 @@ function AppRouter() {
             <AdminRoute>
               <MainLayout>
                 <AdminPersonsPage />
+              </MainLayout>
+            </AdminRoute>
+          )}
+        />
+        <Route
+          path="/admin/users"
+          element={(
+            <AdminRoute>
+              <MainLayout>
+                <AdminUsersPage />
               </MainLayout>
             </AdminRoute>
           )}

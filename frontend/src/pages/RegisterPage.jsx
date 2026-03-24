@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../providers/AuthContext';
 import { api } from '../apis/client';
+import GoogleSignInButton from '../components/GoogleSignInButton';
 
 function RegisterPage() {
   const [email, setEmail] = useState('');
@@ -9,7 +10,7 @@ function RegisterPage() {
   const [full_name, setFullName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
 
   async function handleSubmit(e) {
@@ -27,15 +28,38 @@ function RegisterPage() {
     }
   }
 
+  const handleGoogleSuccess = useCallback(
+    async (credential) => {
+      setError('');
+      setLoading(true);
+      try {
+        await loginWithGoogle(credential);
+        navigate('/profiles');
+      } catch (err) {
+        setError(err.message || 'Đăng nhập Google thất bại');
+      } finally {
+        setLoading(false);
+      }
+    },
+    [loginWithGoogle, navigate]
+  );
+
   return (
     <div style={{ padding: '24px', maxWidth: '400px', margin: '0 auto' }}>
       <h1>Đăng ký</h1>
       {error && <p style={{ color: 'red' }}>{error}</p>}
+      <div style={{ marginBottom: '16px' }}>
+        <GoogleSignInButton onSuccess={handleGoogleSuccess} onError={(e) => setError(e.message)} disabled={loading} />
+      </div>
+      <div style={{ margin: '16px 0', display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <span style={{ color: '#888', fontSize: 14 }}>hoặc đăng ký bằng email</span>
+      </div>
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         <label>
           Họ tên
           <input
             type="text"
+            autoComplete="name"
             value={full_name}
             onChange={(e) => setFullName(e.target.value)}
             required
@@ -46,6 +70,7 @@ function RegisterPage() {
           Email
           <input
             type="email"
+            autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -56,6 +81,7 @@ function RegisterPage() {
           Mật khẩu
           <input
             type="password"
+            autoComplete="new-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required

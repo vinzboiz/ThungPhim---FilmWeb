@@ -62,8 +62,7 @@ export async function api(method, path, body, options = {}) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     const msg = data.message || res.statusText || '';
-    if (res.status === 401 && auth && (msg.includes('Token không hợp lệ') || msg.includes('Thiếu token'))) {
-      // token hết hạn hoặc hỏng: dọn localStorage và chuyển về trang đăng nhập
+    const clearAndRedirect = (reason) => {
       localStorage.removeItem('token');
       localStorage.removeItem('profileId');
       localStorage.removeItem('profileName');
@@ -71,11 +70,16 @@ export async function api(method, path, body, options = {}) {
       localStorage.removeItem('is_admin');
       try {
         if (window.location.pathname !== '/login') {
-          window.location.href = '/login?reason=expired';
+          window.location.href = '/login?reason=' + (reason || 'expired');
         }
       } catch {
-        // bỏ qua lỗi nếu không chạy trong browser
+        /* bỏ qua nếu không chạy trong browser */
       }
+    };
+    if (res.status === 401 && auth && (msg.includes('Token không hợp lệ') || msg.includes('Thiếu token'))) {
+      clearAndRedirect('expired');
+    } else if (res.status === 403 && auth && msg.includes('Tài khoản đã bị khóa')) {
+      clearAndRedirect('locked');
     }
     throw new Error(msg);
   }
@@ -94,7 +98,7 @@ export async function apiFormData(method, path, formData, options = {}) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     const msg = data.message || res.statusText || '';
-    if (res.status === 401 && auth && (msg.includes('Token không hợp lệ') || msg.includes('Thiếu token'))) {
+    const clearAndRedirect = (reason) => {
       localStorage.removeItem('token');
       localStorage.removeItem('profileId');
       localStorage.removeItem('profileName');
@@ -102,11 +106,16 @@ export async function apiFormData(method, path, formData, options = {}) {
       localStorage.removeItem('is_admin');
       try {
         if (window.location.pathname !== '/login') {
-          window.location.href = '/login?reason=expired';
+          window.location.href = '/login?reason=' + (reason || 'expired');
         }
       } catch {
-        // ignore
+        /* ignore */
       }
+    };
+    if (res.status === 401 && auth && (msg.includes('Token không hợp lệ') || msg.includes('Thiếu token'))) {
+      clearAndRedirect('expired');
+    } else if (res.status === 403 && auth && msg.includes('Tài khoản đã bị khóa')) {
+      clearAndRedirect('locked');
     }
     throw new Error(msg);
   }

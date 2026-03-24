@@ -56,10 +56,41 @@ function AccountPage() {
           border: '1px solid rgba(255,255,255,0.1)',
         }}
       >
-        <p style={{ margin: '0 0 8px', color: '#999' }}>Họ tên</p>
-        <p style={{ margin: '0 0 16px', fontSize: '16px' }}>{user?.full_name || '—'}</p>
-        <p style={{ margin: '0 0 8px', color: '#999' }}>Email</p>
-        <p style={{ margin: '0 0 16px', fontSize: '16px' }}>{user?.email || '—'}</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '20px' }}>
+          <div
+            style={{
+              width: 80,
+              height: 80,
+              borderRadius: '50%',
+              overflow: 'hidden',
+              background: '#333',
+              flexShrink: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 28,
+              color: '#888',
+              fontWeight: 600,
+            }}
+          >
+            {user?.avatar_url ? (
+              <img
+                src={user.avatar_url}
+                alt=""
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              (user?.full_name || user?.email || 'U').charAt(0).toUpperCase()
+            )}
+          </div>
+          <div>
+            <p style={{ margin: '0 0 4px', color: '#999', fontSize: 12 }}>Họ tên</p>
+            <p style={{ margin: 0, fontSize: '18px', fontWeight: 500 }}>{user?.full_name || '—'}</p>
+            <p style={{ margin: '12px 0 4px', color: '#999', fontSize: 12 }}>Email</p>
+            <p style={{ margin: 0, fontSize: '16px', color: '#ccc' }}>{user?.email || '—'}</p>
+          </div>
+        </div>
         {user?.is_admin && (
           <p style={{ margin: '0 0 16px', color: '#46d369', fontSize: '14px' }}>
             Tài khoản quản trị

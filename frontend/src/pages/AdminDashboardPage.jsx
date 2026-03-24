@@ -38,6 +38,12 @@ function AdminDashboardPage() {
           <p>Thêm, sửa, xoá thể loại và ảnh bìa; dùng để gán cho phim.</p>
           <Link to="/admin/genres" className="admin-btn admin-btn--primary">Quản lý thể loại</Link>
         </section>
+
+        <section className="admin-dashboard-card">
+          <h2>Người dùng (Users)</h2>
+          <p>Xem danh sách người dùng, avatar, loại đăng nhập (Email/Google), thêm/bỏ admin, khóa tài khoản.</p>
+          <Link to="/admin/users" className="admin-btn admin-btn--primary">Quản lý người dùng</Link>
+        </section>
       </div>
     </div>
   );
