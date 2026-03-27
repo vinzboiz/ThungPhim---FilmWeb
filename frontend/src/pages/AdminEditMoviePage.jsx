@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api, API_BASE, getToken, normalizeUploadError } from '../apis/client';
+import IntroRangeSlider from '../components/player/IntroRangeSlider';
 
 function AdminEditMoviePage() {
   const { id } = useParams();
@@ -20,6 +21,8 @@ function AdminEditMoviePage() {
     age_rating: '',
     country_code: '',
     is_featured: false,
+    intro_start_seconds: '',
+    intro_end_seconds: '',
   });
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -34,6 +37,8 @@ function AdminEditMoviePage() {
   const [addingActors, setAddingActors] = useState(false);
   const [addingDirectors, setAddingDirectors] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const introVideoRef = useRef(null);
+  const [introPreviewDuration, setIntroPreviewDuration] = useState(0);
 
   useEffect(() => {
     async function load() {
@@ -62,6 +67,8 @@ function AdminEditMoviePage() {
           age_rating: data.age_rating || '',
           country_code: data.country_code || '',
           is_featured: !!data.is_featured,
+          intro_start_seconds: data.intro_start_seconds ?? '',
+          intro_end_seconds: data.intro_end_seconds ?? '',
         });
         const castData = castRes.ok ? await castRes.json() : [];
         setCast(Array.isArray(castData) ? castData : []);
@@ -271,6 +278,10 @@ function AdminEditMoviePage() {
             ? Number(form.duration_minutes)
             : null,
           rating: form.rating ? Number(form.rating) : null,
+          intro_start_seconds:
+            form.intro_start_seconds === '' || form.intro_start_seconds == null ? null : Number(form.intro_start_seconds),
+          intro_end_seconds:
+            form.intro_end_seconds === '' || form.intro_end_seconds == null ? null : Number(form.intro_end_seconds),
         },
         { auth: true },
       );
@@ -432,6 +443,77 @@ function AdminEditMoviePage() {
             onChange={handleChange}
           />
         </label>
+
+        <div style={{ marginTop: 12, padding: 12, border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8 }}>
+          <h3 style={{ margin: '0 0 8px' }}>Skip Intro (Movie)</h3>
+          <p style={{ margin: '0 0 10px', color: '#aaa', fontSize: 13 }}>
+            Kéo 2 tay nắm để chọn đoạn intro. Khi người dùng xem phim, trong khoảng này sẽ hiện nút “Skip Intro”.
+          </p>
+          {form.video_url ? (
+            <>
+              <div
+                style={{
+                  borderRadius: 8,
+                  overflow: 'hidden',
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  marginBottom: 10,
+                }}
+              >
+                <video
+                  ref={introVideoRef}
+                  src={String(form.video_url).startsWith('http') ? form.video_url : `${API_BASE}${form.video_url}`}
+                  controls
+                  onLoadedMetadata={(e) => {
+                    const d = e.currentTarget.duration;
+                    if (isFinite(d) && d > 0) setIntroPreviewDuration(d);
+                  }}
+                  style={{
+                    width: '100%',
+                    maxHeight: 260,
+                    borderRadius: 0,
+                    background: '#000',
+                    display: 'block',
+                    marginBottom: 0,
+                    verticalAlign: 'top',
+                  }}
+                />
+                <IntroRangeSlider
+                  attachedBelowVideo
+                  durationSeconds={
+                    introPreviewDuration > 0
+                      ? introPreviewDuration
+                      : Number(form.duration_minutes)
+                        ? Number(form.duration_minutes) * 60
+                        : 0
+                  }
+                  startSeconds={form.intro_start_seconds === '' ? 0 : Number(form.intro_start_seconds)}
+                  endSeconds={form.intro_end_seconds === '' ? 0 : Number(form.intro_end_seconds)}
+                  onChange={({ startSeconds, endSeconds }) => {
+                    setForm((prev) => ({
+                      ...prev,
+                      intro_start_seconds: String(startSeconds),
+                      intro_end_seconds: String(endSeconds),
+                    }));
+                  }}
+                  onSeek={(sec) => {
+                    const v = introVideoRef.current;
+                    if (v) v.currentTime = sec;
+                  }}
+                />
+              </div>
+              <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                <button
+                  type="button"
+                  onClick={() => setForm((prev) => ({ ...prev, intro_start_seconds: '', intro_end_seconds: '' }))}
+                >
+                  Xóa intro
+                </button>
+              </div>
+            </>
+          ) : (
+            <p style={{ color: '#888', margin: 0 }}>Chưa có video, hãy upload/gán Video URL trước.</p>
+          )}
+        </div>
         <label>
           Age rating (VD: 13+)
           <input

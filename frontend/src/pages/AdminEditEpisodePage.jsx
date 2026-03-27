@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { API_BASE, getToken, normalizeUploadError } from '../apis/client';
+import IntroRangeSlider, { formatTime } from '../components/player/IntroRangeSlider';
 
 function AdminEditEpisodePage() {
   const { id: seriesId, episodeId } = useParams();
@@ -17,10 +18,15 @@ function AdminEditEpisodePage() {
     duration_minutes: '',
     thumbnail_url: '',
     video_url: '',
+    intro_mode: 'series', // series | custom | none
+    intro_start_seconds: '',
+    intro_end_seconds: '',
   });
   const [seasons, setSeasons] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [uploadingVideoOverlay, setUploadingVideoOverlay] = useState(false);
+  const previewRef = useRef(null);
+  const [previewDuration, setPreviewDuration] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -42,6 +48,9 @@ function AdminEditEpisodePage() {
               duration_minutes: ep.duration_minutes != null ? String(ep.duration_minutes) : '',
               thumbnail_url: ep.thumbnail_url || '',
               video_url: ep.video_url || '',
+              intro_mode: ep.intro_mode || 'series',
+              intro_start_seconds: ep.intro_start_seconds ?? '',
+              intro_end_seconds: ep.intro_end_seconds ?? '',
             });
           } else {
             setError('Không tìm thấy tập');
@@ -58,6 +67,28 @@ function AdminEditEpisodePage() {
     }
     load();
   }, [seriesId, episodeId]);
+
+  useEffect(() => {
+    const v = previewRef.current;
+    if (!v) {
+      setPreviewDuration(0);
+      return;
+    }
+
+    const syncDuration = () => {
+      const d = Number(v.duration);
+      setPreviewDuration(isFinite(d) && d > 0 ? d : 0);
+    };
+
+    // Handle both fresh loads and cached metadata cases.
+    syncDuration();
+    v.addEventListener('loadedmetadata', syncDuration);
+    v.addEventListener('durationchange', syncDuration);
+    return () => {
+      v.removeEventListener('loadedmetadata', syncDuration);
+      v.removeEventListener('durationchange', syncDuration);
+    };
+  }, [form.video_url, form.intro_mode]);
 
   function handleChange(e) {
     const { name, value } = e.target;
@@ -81,6 +112,15 @@ function AdminEditEpisodePage() {
           duration_minutes: form.duration_minutes ? Number(form.duration_minutes) : null,
           thumbnail_url: form.thumbnail_url || null,
           video_url: form.video_url || null,
+          intro_mode: form.intro_mode || 'series',
+          intro_start_seconds:
+            form.intro_mode === 'custom'
+              ? (form.intro_start_seconds === '' || form.intro_start_seconds == null ? 0 : Number(form.intro_start_seconds))
+              : null,
+          intro_end_seconds:
+            form.intro_mode === 'custom'
+              ? (form.intro_end_seconds === '' || form.intro_end_seconds == null ? 0 : Number(form.intro_end_seconds))
+              : null,
         }),
       });
       if (!res.ok) {
@@ -196,6 +236,81 @@ function AdminEditEpisodePage() {
           <input type="text" name="video_url" value={form.video_url} onChange={handleChange} style={{ display: 'block', width: '100%', padding: '8px' }} />
           <input type="file" accept="video/*" onChange={(e) => e.target.files[0] && uploadFile(e.target.files[0], 'video_url', 'video')} disabled={uploading} style={{ marginTop: '4px' }} />
         </label>
+
+        <div style={{ marginTop: 8, padding: 12, border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8 }}>
+          <h3 style={{ margin: '0 0 8px' }}>Skip Intro (Episode)</h3>
+          <label style={{ display: 'block', marginBottom: 10 }}>
+            Chế độ intro
+            <select
+              name="intro_mode"
+              value={form.intro_mode}
+              onChange={handleChange}
+              style={{ display: 'block', marginTop: 6, padding: '8px', width: '100%' }}
+            >
+              <option value="series">Lấy skip cũ (dùng intro của series)</option>
+              <option value="custom">Lấy skip mới (tùy chỉnh cho tập này)</option>
+              <option value="none">Không có intro</option>
+            </select>
+          </label>
+
+          {form.intro_mode === 'custom' ? (
+            form.video_url ? (
+              <>
+                <div
+                  style={{
+                    borderRadius: 8,
+                    overflow: 'hidden',
+                    border: '1px solid rgba(255,255,255,0.12)',
+                    marginBottom: 10,
+                  }}
+                >
+                  <video
+                    ref={previewRef}
+                    src={String(form.video_url).startsWith('http') ? form.video_url : `${API_BASE}${form.video_url}`}
+                    controls
+                    style={{
+                      width: '100%',
+                      maxHeight: 260,
+                      borderRadius: 0,
+                      background: '#000',
+                      display: 'block',
+                      marginBottom: 0,
+                      verticalAlign: 'top',
+                    }}
+                  />
+                  <IntroRangeSlider
+                    attachedBelowVideo
+                    durationSeconds={previewDuration}
+                    startSeconds={form.intro_start_seconds === '' ? 0 : Number(form.intro_start_seconds)}
+                    endSeconds={form.intro_end_seconds === '' ? 0 : Number(form.intro_end_seconds)}
+                    onChange={({ startSeconds, endSeconds }) => {
+                      setForm((prev) => ({
+                        ...prev,
+                        intro_start_seconds: String(startSeconds),
+                        intro_end_seconds: String(endSeconds),
+                      }));
+                    }}
+                    onSeek={(sec) => {
+                      const v = previewRef.current;
+                      if (v) v.currentTime = sec;
+                    }}
+                  />
+                </div>
+                <p style={{ margin: '10px 0 0', color: '#888', fontSize: 12 }}>
+                  Đang chọn: {formatTime(Number(form.intro_start_seconds || 0))} → {formatTime(Number(form.intro_end_seconds || 0))}
+                </p>
+              </>
+            ) : (
+              <p style={{ margin: 0, color: '#888' }}>Cần có Video URL để preview và đặt intro.</p>
+            )
+          ) : (
+            <p style={{ margin: 0, color: '#888', fontSize: 12 }}>
+              {form.intro_mode === 'series'
+                ? 'Tập này sẽ dùng intro mặc định của series (được set từ episode master).'
+                : 'Tập này sẽ không hiển thị nút Skip Intro.'}
+            </p>
+          )}
+        </div>
         <div style={{ display: 'flex', gap: '8px' }}>
           <button type="submit" style={{ padding: '8px 16px' }}>Lưu</button>
           <button type="button" onClick={() => navigate(`/admin/series/${seriesId}`)} style={{ padding: '8px 16px' }}>Hủy</button>

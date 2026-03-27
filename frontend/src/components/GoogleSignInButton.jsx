@@ -9,8 +9,11 @@ export default function GoogleSignInButton({ onSuccess, onError, disabled = fals
   const containerRef = useRef(null);
   const renderedRef = useRef(false);
   const clientId = (import.meta.env.VITE_GOOGLE_CLIENT_ID || '').trim();
-  globalCallbackRef.onSuccess = onSuccess;
-  globalCallbackRef.onError = onError;
+
+  useEffect(() => {
+    globalCallbackRef.onSuccess = onSuccess;
+    globalCallbackRef.onError = onError;
+  }, [onSuccess, onError]);
 
   useEffect(() => {
     if (!clientId || !containerRef.current || renderedRef.current) return;

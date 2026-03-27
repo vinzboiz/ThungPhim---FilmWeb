@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { API_BASE, getToken, normalizeUploadError } from '../apis/client';
+import IntroRangeSlider, { formatTime } from '../components/player/IntroRangeSlider';
 
 function AdminSeriesDetailPage() {
   const { id } = useParams();
@@ -26,6 +27,20 @@ function AdminSeriesDetailPage() {
   });
   const [creatingEpisode, setCreatingEpisode] = useState(false);
   const [uploadingVideoOverlay, setUploadingVideoOverlay] = useState(false);
+
+  // Skip Intro (series) - chọn episode master + set intro mặc định của series
+  const [introMasterEpisodeId, setIntroMasterEpisodeId] = useState('');
+  const [seriesIntroStart, setSeriesIntroStart] = useState(0);
+  const [seriesIntroEnd, setSeriesIntroEnd] = useState(0);
+  const [savingIntro, setSavingIntro] = useState(false);
+  const [introMsg, setIntroMsg] = useState('');
+  const introVideoRef = useRef(null);
+  const [introDuration, setIntroDuration] = useState(0);
+
+  const masterEpisode = useMemo(
+    () => episodes.find((e) => String(e.id) === String(introMasterEpisodeId)),
+    [episodes, introMasterEpisodeId]
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -54,6 +69,74 @@ function AdminSeriesDetailPage() {
       cancelled = true;
     };
   }, [id]);
+
+  // init intro state từ series sau khi load
+  useEffect(() => {
+    if (!series) return;
+    const srcId = series.intro_source_episode_id != null ? String(series.intro_source_episode_id) : '';
+    setIntroMasterEpisodeId(srcId);
+    setSeriesIntroStart(series.intro_start_seconds != null ? Number(series.intro_start_seconds) : 0);
+    setSeriesIntroEnd(series.intro_end_seconds != null ? Number(series.intro_end_seconds) : 0);
+  }, [series]);
+
+  useEffect(() => {
+    const v = introVideoRef.current;
+    if (!v) {
+      setIntroDuration(0);
+      return;
+    }
+
+    const syncDuration = () => {
+      const d = Number(v.duration);
+      setIntroDuration(isFinite(d) && d > 0 ? d : 0);
+    };
+
+    syncDuration();
+    v.addEventListener('loadedmetadata', syncDuration);
+    v.addEventListener('durationchange', syncDuration);
+    return () => {
+      v.removeEventListener('loadedmetadata', syncDuration);
+      v.removeEventListener('durationchange', syncDuration);
+    };
+  }, [masterEpisode?.video_url, introMasterEpisodeId]);
+
+  async function handleSaveSeriesIntro() {
+    setIntroMsg('');
+    setError('');
+    const token = getToken();
+    if (!token) {
+      setError('Cần đăng nhập admin để lưu intro');
+      return;
+    }
+    if (!introMasterEpisodeId) {
+      setError('Hãy chọn một tập làm episode master cho intro.');
+      return;
+    }
+    if (seriesIntroEnd <= seriesIntroStart) {
+      setError('Intro End phải lớn hơn Intro Start.');
+      return;
+    }
+    try {
+      setSavingIntro(true);
+      const res = await fetch(`${API_BASE}/api/series/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          intro_source_episode_id: Number(introMasterEpisodeId),
+          intro_start_seconds: Number(seriesIntroStart),
+          intro_end_seconds: Number(seriesIntroEnd),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || 'Lưu intro thất bại');
+      setIntroMsg('Đã lưu intro mặc định cho series.');
+      setSeries((prev) => (prev ? { ...prev, ...data } : prev));
+    } catch (e) {
+      setError(e.message || 'Lưu intro thất bại');
+    } finally {
+      setSavingIntro(false);
+    }
+  }
 
   async function reloadEpisodes(seasonId) {
     try {
@@ -296,6 +379,101 @@ function AdminSeriesDetailPage() {
         <Link to={`/admin/series/${id}/edit`} style={{ padding: '8px 16px', background: '#e50914', color: '#fff', textDecoration: 'none', borderRadius: '4px', fontWeight: 500 }}>Sửa series (thông tin + cast)</Link>
       </div>
       <p style={{ color: '#ccc', maxWidth: '800px' }}>{series.description}</p>
+
+      <section style={{ marginTop: 18, marginBottom: 24, padding: 12, border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8 }}>
+        <h2 style={{ marginTop: 0 }}>Skip Intro (Series)</h2>
+        <p style={{ margin: '0 0 12px', color: '#aaa', fontSize: 13 }}>
+          Chọn <strong>1 tập bất kỳ</strong> làm <strong>episode master</strong> (không phụ thuộc mùa), kéo 2 tay nắm để set intro mặc định cho toàn bộ series.
+        </p>
+        {introMsg && <p style={{ color: '#46d369', marginTop: 0 }}>{introMsg}</p>}
+        <label style={{ display: 'block', marginBottom: 10 }}>
+          Episode master
+          <select
+            value={introMasterEpisodeId}
+            onChange={(e) => setIntroMasterEpisodeId(e.target.value)}
+            style={{ marginLeft: 8, padding: '4px 8px', minWidth: 260 }}
+          >
+            <option value="">(Chọn tập)</option>
+            {episodes.map((ep) => (
+              <option key={ep.id} value={ep.id}>
+                #{ep.id} — S{ep.season_id ? ep.season_id : '—'}E{ep.episode_number ?? '—'} — {ep.title}
+              </option>
+            ))}
+          </select>
+          {series.intro_source_episode_id && (
+            <span style={{ marginLeft: 10, color: '#888', fontSize: 12 }}>
+              (Hiện tại: episode #{series.intro_source_episode_id})
+            </span>
+          )}
+        </label>
+
+        {masterEpisode?.video_url ? (
+          <>
+            <div
+              style={{
+                borderRadius: 8,
+                overflow: 'hidden',
+                border: '1px solid rgba(255,255,255,0.12)',
+                marginBottom: 10,
+              }}
+            >
+              <video
+                ref={introVideoRef}
+                src={String(masterEpisode.video_url).startsWith('http') ? masterEpisode.video_url : `${API_BASE}${masterEpisode.video_url}`}
+                controls
+                style={{
+                  width: '100%',
+                  maxHeight: 260,
+                  borderRadius: 0,
+                  background: '#000',
+                  display: 'block',
+                  marginBottom: 0,
+                  verticalAlign: 'top',
+                }}
+              />
+              <IntroRangeSlider
+                attachedBelowVideo
+                durationSeconds={introDuration}
+                startSeconds={seriesIntroStart}
+                endSeconds={seriesIntroEnd}
+                onChange={({ startSeconds, endSeconds }) => {
+                  setSeriesIntroStart(startSeconds);
+                  setSeriesIntroEnd(endSeconds);
+                }}
+                onSeek={(sec) => {
+                  const v = introVideoRef.current;
+                  if (v) v.currentTime = sec;
+                }}
+              />
+            </div>
+            <div style={{ display: 'flex', gap: 8, marginTop: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+              <button type="button" onClick={handleSaveSeriesIntro} disabled={savingIntro}>
+                {savingIntro ? 'Đang lưu...' : 'Lưu intro cho series'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIntroMasterEpisodeId('');
+                  setSeriesIntroStart(0);
+                  setSeriesIntroEnd(0);
+                }}
+                disabled={savingIntro}
+              >
+                Reset
+              </button>
+              {seriesIntroEnd > seriesIntroStart && (
+                <span style={{ color: '#888', fontSize: 12 }}>
+                  Intro: {formatTime(seriesIntroStart)} → {formatTime(seriesIntroEnd)}
+                </span>
+              )}
+            </div>
+          </>
+        ) : (
+          <p style={{ color: '#888', margin: 0 }}>
+            Hãy chọn episode master có <strong>video_url</strong> để preview và set intro.
+          </p>
+        )}
+      </section>
 
       <section style={{ marginTop: '24px', marginBottom: '24px' }}>
         <h2>Seasons</h2>

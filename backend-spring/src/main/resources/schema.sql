@@ -63,6 +63,8 @@ CREATE TABLE IF NOT EXISTS movies (
     is_featured BOOLEAN NOT NULL DEFAULT FALSE,
     view_count INT NOT NULL DEFAULT 0,
     like_count INT NOT NULL DEFAULT 0,
+    intro_start_seconds DECIMAL(6,1) NULL,
+    intro_end_seconds DECIMAL(6,1) NULL,
     created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     updated_at DATETIME(3) NULL
 ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -103,6 +105,9 @@ CREATE TABLE IF NOT EXISTS series (
     country_code VARCHAR(10) NULL,
     duration_minutes INT NULL,
     rating DECIMAL(3,1) NULL,
+    intro_source_episode_id INT NULL,
+    intro_start_seconds DECIMAL(6,1) NULL,
+    intro_end_seconds DECIMAL(6,1) NULL,
     created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     updated_at DATETIME(3) NULL
 ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -171,6 +176,9 @@ CREATE TABLE IF NOT EXISTS episodes (
     video_url VARCHAR(191) NULL,
     release_date DATETIME(3) NULL,
     view_count INT NOT NULL DEFAULT 0,
+    intro_mode VARCHAR(10) NOT NULL DEFAULT 'series',
+    intro_start_seconds DECIMAL(6,1) NULL,
+    intro_end_seconds DECIMAL(6,1) NULL,
     created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     updated_at DATETIME(3) NULL,
     INDEX idx_episodes_series (series_id),

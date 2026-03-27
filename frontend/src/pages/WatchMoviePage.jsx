@@ -31,6 +31,8 @@ function WatchMoviePage() {
   const videoRef = useRef(null);
   const commentSectionRef = useRef(null);
   const initialProgressApplied = useRef(false);
+  const [showSkipIntro, setShowSkipIntro] = useState(false);
+  const showSkipRef = useRef(false);
   const profileId = getProfileId();
   const token = getToken();
   const location = useLocation();
@@ -118,7 +120,25 @@ function WatchMoviePage() {
       lastSaved.current = t;
       saveProgress(t);
     }
-  }, [saveProgress]);
+
+    // Skip intro (movie)
+    const s = movie?.intro_start_seconds != null ? Number(movie.intro_start_seconds) : null;
+    const e = movie?.intro_end_seconds != null ? Number(movie.intro_end_seconds) : null;
+    if (s != null && e != null && isFinite(s) && isFinite(e) && e > s) {
+      const inRange = v.currentTime >= s && v.currentTime < e;
+      if (inRange !== showSkipRef.current) {
+        showSkipRef.current = inRange;
+        setShowSkipIntro(inRange);
+      }
+    } else if (showSkipRef.current) {
+      showSkipRef.current = false;
+      setShowSkipIntro(false);
+    }
+  }, [
+    saveProgress,
+    movie?.intro_start_seconds,
+    movie?.intro_end_seconds,
+  ]);
 
   const handlePause = useCallback(() => {
     if (videoRef.current) saveProgress(Math.floor(videoRef.current.currentTime));
@@ -136,6 +156,13 @@ function WatchMoviePage() {
     v.currentTime = start;
     initialProgressApplied.current = true;
   }, [savedProgress, showContinuePrompt]);
+
+  const handleLoadedMetadata = useCallback(() => {
+    applySavedProgressOnce();
+    queueMicrotask(() => {
+      handleTimeUpdate();
+    });
+  }, [applySavedProgressOnce, handleTimeUpdate]);
 
   const scrollToComments = useCallback(() => {
     commentSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -259,10 +286,25 @@ function WatchMoviePage() {
           controls
           className="watch-movie-video"
           src={videoSrc}
-          onLoadedMetadata={applySavedProgressOnce}
+          onLoadedMetadata={handleLoadedMetadata}
           onTimeUpdate={handleTimeUpdate}
+          onSeeked={handleTimeUpdate}
+          onPlaying={handleTimeUpdate}
           onPause={handlePause}
         />
+        {showSkipIntro && (
+          <button
+            type="button"
+            className="watch-skip-intro-btn"
+            onClick={() => {
+              const v = videoRef.current;
+              const e = movie?.intro_end_seconds != null ? Number(movie.intro_end_seconds) : null;
+              if (v && e != null && isFinite(e)) v.currentTime = e;
+            }}
+          >
+            Skip Intro
+          </button>
+        )}
       </div>
 
       <div className="watch-movie-bar">

@@ -4,6 +4,7 @@ import { API_BASE, getToken, getProfileId } from '../apis/client';
 import ReviewSection from '../components/ReviewSection';
 import DetailSuggestions from '../components/detail/DetailSuggestions';
 import HeroBanner from '../components/home/HeroBanner';
+import '../styles/pages/watch-movie.css';
 
 function resolveVideoSrc(url) {
   if (!url || !String(url).trim()) return null;
@@ -28,6 +29,8 @@ function WatchEpisodePage() {
   const videoRef = useRef(null);
   const videoWrapRef = useRef(null);
   const initialProgressApplied = useRef(false);
+  const [showSkipIntro, setShowSkipIntro] = useState(false);
+  const showSkipRef = useRef(false);
   const profileId = getProfileId();
   const token = getToken();
 
@@ -98,7 +101,38 @@ function WatchEpisodePage() {
       lastSaved.current = t;
       saveProgress(t);
     }
-  }, [saveProgress]);
+
+    // Skip intro (episode) - effective intro theo intro_mode + series intro
+    const mode = (episode?.intro_mode || 'series').toString().toLowerCase();
+    let s = null;
+    let e = null;
+    if (mode === 'none') {
+      s = null; e = null;
+    } else if (mode === 'custom') {
+      s = episode?.intro_start_seconds != null ? Number(episode.intro_start_seconds) : null;
+      e = episode?.intro_end_seconds != null ? Number(episode.intro_end_seconds) : null;
+    } else {
+      s = episode?.series_intro_start_seconds != null ? Number(episode.series_intro_start_seconds) : null;
+      e = episode?.series_intro_end_seconds != null ? Number(episode.series_intro_end_seconds) : null;
+    }
+    if (s != null && e != null && isFinite(s) && isFinite(e) && e > s) {
+      const inRange = v.currentTime >= s && v.currentTime < e;
+      if (inRange !== showSkipRef.current) {
+        showSkipRef.current = inRange;
+        setShowSkipIntro(inRange);
+      }
+    } else if (showSkipRef.current) {
+      showSkipRef.current = false;
+      setShowSkipIntro(false);
+    }
+  }, [
+    saveProgress,
+    episode?.intro_mode,
+    episode?.intro_start_seconds,
+    episode?.intro_end_seconds,
+    episode?.series_intro_start_seconds,
+    episode?.series_intro_end_seconds,
+  ]);
 
   const handlePause = useCallback(() => {
     if (videoRef.current) saveProgress(Math.floor(videoRef.current.currentTime));
@@ -108,7 +142,8 @@ function WatchEpisodePage() {
     if (initialProgressApplied.current && videoRef.current) {
       saveProgress(Math.floor(videoRef.current.currentTime));
     }
-  }, [saveProgress]);
+    handleTimeUpdate();
+  }, [saveProgress, handleTimeUpdate]);
 
   const applySavedProgressOnce = useCallback(() => {
     if (showContinuePrompt) return;
@@ -134,7 +169,10 @@ function WatchEpisodePage() {
 
   const handleVideoLoaded = useCallback(() => {
     applySavedProgressOnce();
-  }, [applySavedProgressOnce]);
+    queueMicrotask(() => {
+      handleTimeUpdate();
+    });
+  }, [applySavedProgressOnce, handleTimeUpdate]);
 
   const handleVideoKeyDown = useCallback((e) => {
     const v = videoRef.current;
@@ -221,6 +259,7 @@ function WatchEpisodePage() {
           borderRadius: '8px',
           overflow: 'hidden',
           marginBottom: '24px',
+          position: 'relative',
         }}
       >
         {videoSrc ? (
@@ -232,7 +271,7 @@ function WatchEpisodePage() {
               role="button"
               onClick={() => videoWrapRef.current?.focus()}
               onKeyDown={handleVideoKeyDown}
-              style={{ outline: 'none' }}
+              style={{ outline: 'none', position: 'relative' }}
             >
               <video
                 ref={videoRef}
@@ -241,11 +280,30 @@ function WatchEpisodePage() {
                 src={videoSrc}
                 onLoadedMetadata={handleVideoLoaded}
                 onTimeUpdate={handleTimeUpdate}
+                onPlaying={handleTimeUpdate}
                 onPause={handlePause}
                 onSeeked={handleSeeked}
               >
                 Trình duyệt không hỗ trợ video.
               </video>
+              {showSkipIntro && (
+                <button
+                  type="button"
+                  className="watch-skip-intro-btn"
+                  style={{ right: 16, bottom: 16 }}
+                  onClick={() => {
+                    const v = videoRef.current;
+                    const mode = (episode?.intro_mode || 'series').toString().toLowerCase();
+                    const end =
+                      mode === 'custom'
+                        ? (episode?.intro_end_seconds != null ? Number(episode.intro_end_seconds) : null)
+                        : (episode?.series_intro_end_seconds != null ? Number(episode.series_intro_end_seconds) : null);
+                    if (v && end != null && isFinite(end)) v.currentTime = end;
+                  }}
+                >
+                  Skip Intro
+                </button>
+              )}
             </div>
           </>
         ) : (

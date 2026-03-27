@@ -153,7 +153,8 @@ npm run dev
 5. **Authorized redirect URIs:** để trống (dùng Google Identity Services không cần redirect).
 6. Copy **Client ID** (dạng `xxx.apps.googleusercontent.com`).
 7. Cấu hình:
-   - **Backend:** `application.properties` → `app.google.client-id=YOUR_CLIENT_ID`
+   - **Backend Spring:** `backend-spring/.../application.properties` → `app.google.client-id=YOUR_CLIENT_ID`
+   - **Backend Node (tùy chọn):** `backend/.env` → `GOOGLE_CLIENT_ID=YOUR_CLIENT_ID` — endpoint `POST /api/auth/google` giống Spring
    - **Frontend:** `.env` → `VITE_GOOGLE_CLIENT_ID=YOUR_CLIENT_ID`
 8. Restart backend và frontend.
 
@@ -163,7 +164,12 @@ npm run dev
 
 ```
 ThungPhim/
-├── backend-spring/          # API Spring Boot (Java 17, Maven)
+├── backend/                 # API Node.js + Express (tùy chọn; cùng schema MySQL)
+│   ├── src/                 # routes, controllers, middleware
+│   ├── .env.example         # GOOGLE_CLIENT_ID, DB_*, JWT_SECRET
+│   └── README.md
+│
+├── backend-spring/          # API Spring Boot (Java 17, Maven) — backend chính
 │   ├── src/main/java/com/thungphim/
 │   │   ├── controller/     # REST API (Auth, Movies, Series, Genres, ...)
 │   │   ├── service/        # Business logic
