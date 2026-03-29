@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../providers/AuthContext';
+import { useAuth } from '../hooks/useAuth.js';
 import { api } from '../apis/client';
 import '../styles/pages/profile-select.css';
 

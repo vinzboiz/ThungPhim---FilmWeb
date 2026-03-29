@@ -1,0 +1,65 @@
+/* Trang xem tập — bổ sung cho watch-movie.css (overlay continue, nút skip) */
+
+.watch-episode {
+  padding: 24px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.watch-episode__loading,
+.watch-episode__error {
+  padding: 24px;
+}
+
+.watch-episode__error {
+  color: #e53935;
+}
+
+.watch-episode__back {
+  color: #61dafb;
+}
+
+.watch-episode__desc {
+  color: #ccc;
+}
+
+.watch-episode__video-shell {
+  width: 100%;
+  max-height: 480px;
+  background-color: #000;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 24px;
+  position: relative;
+}
+
+.watch-episode__hint {
+  font-size: 13px;
+  color: #888;
+  margin-bottom: 8px;
+}
+
+.watch-episode__video-focus {
+  outline: none;
+  position: relative;
+}
+
+.watch-episode__video {
+  width: 100%;
+  max-height: 400px;
+  display: block;
+}
+
+.watch-episode__placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 280px;
+  color: #888;
+  font-size: 16px;
+}
+
+.watch-episode .watch-skip-intro-btn {
+  right: 16px;
+  bottom: 16px;
+}

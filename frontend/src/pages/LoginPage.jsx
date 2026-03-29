@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
-import { useAuth } from '../providers/AuthContext';
+import { useAuth } from '../hooks/useAuth.js';
 import GoogleSignInButton from '../components/GoogleSignInButton';
 
 function LoginPage() {

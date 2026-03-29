@@ -1,6 +1,6 @@
 import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useEffect, useState, useRef } from 'react';
-import { useAuth } from '../../providers/AuthContext';
+import { useAuth } from '../../hooks/useAuth.js';
 import { getProfileName, getProfileAvatar } from '../../apis/client';
 import logoNetflix from '../../assets/logo/Netflix_Logo_PMS.png';
 import NotificationBell from './NotificationBell.jsx';
@@ -78,13 +78,16 @@ function Header() {
 
   // Đồng bộ ô tìm kiếm với URL khi đang ở trang chủ; rời trang chủ thì xóa query để không bị redirect ngược
   useEffect(() => {
-    if (isHome) {
-      setSearchQuery(qFromUrl);
-      typedOffHomeRef.current = false;
-    } else {
-      setSearchQuery('');
-      typedOffHomeRef.current = false;
-    }
+    const tid = setTimeout(() => {
+      if (isHome) {
+        setSearchQuery(qFromUrl);
+        typedOffHomeRef.current = false;
+      } else {
+        setSearchQuery('');
+        typedOffHomeRef.current = false;
+      }
+    }, 0);
+    return () => clearTimeout(tid);
   }, [isHome, qFromUrl]);
 
   // Gõ tìm kiếm: debounce rồi cập nhật URL (trang chủ) hoặc chuyển về trang chủ với q
@@ -102,7 +105,7 @@ function Header() {
       }
     }, 400);
     return () => clearTimeout(t);
-  }, [searchQuery, isHome]);
+  }, [searchQuery, isHome, navigate, searchParams, setSearchParams]);
 
   const onSearchChange = (e) => {
     if (!isHome) typedOffHomeRef.current = true;

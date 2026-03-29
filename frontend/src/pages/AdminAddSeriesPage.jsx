@@ -163,7 +163,6 @@ function AdminAddSeriesPage() {
           ...directorIds.map((id) => ({ person_id: id, role: 'director' })),
         ];
         for (const item of allCast) {
-          // eslint-disable-next-line no-await-in-loop
           const castRes = await fetch(`${API_BASE}/api/series/${seriesId}/cast`, {
             method: 'POST',
             headers: {

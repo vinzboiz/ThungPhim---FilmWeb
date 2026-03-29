@@ -3,6 +3,22 @@
   background: #141414;
 }
 
+.movie-detail__status {
+  padding: 24px;
+}
+
+.movie-detail__status--error {
+  color: #e53935;
+}
+
+.movie-detail-meta__gap-right {
+  margin-right: 12px;
+}
+
+.movie-detail-meta__gap-left {
+  margin-left: 12px;
+}
+
 .movie-detail-breadcrumb {
   padding: 12px 32px;
   background: rgba(0, 0, 0, 0.6);
@@ -30,6 +46,10 @@
   height: 420px;
   background-size: cover;
   background-position: center;
+}
+
+.movie-detail-banner.movie-detail-banner--dynamic {
+  background-image: var(--movie-poster-bg, none);
 }
 
 .movie-detail-banner-gradient {

@@ -7,38 +7,15 @@ function AdminSeriesListPage() {
   const [series, setSeries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [newTitle, setNewTitle] = useState('');
-  const [newAgeRating, setNewAgeRating] = useState('');
-  const [newReleaseYear, setNewReleaseYear] = useState('');
-  const [newDurationMinutes, setNewDurationMinutes] = useState('');
-  const [newFeatured, setNewFeatured] = useState(false);
-  const [newThumbnailUrl, setNewThumbnailUrl] = useState('');
-  const [newBannerUrl, setNewBannerUrl] = useState('');
-  const [newDescription, setNewDescription] = useState('');
-  const [newCountryCode, setNewCountryCode] = useState('');
-  const [newTrailerUrl, setNewTrailerUrl] = useState('');
-  const [newTrailerYoutubeUrl, setNewTrailerYoutubeUrl] = useState('');
-  const [newGenreIds, setNewGenreIds] = useState([]);
-  const [countries, setCountries] = useState([]);
-  const [genres, setGenres] = useState([]);
-  const [uploadingThumb, setUploadingThumb] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
     async function load() {
       try {
-        const [seriesRes, countriesRes, genresRes] = await Promise.all([
-          fetch(`${API_BASE}/api/series`),
-          fetch(`${API_BASE}/api/countries`),
-          fetch(`${API_BASE}/api/genres`),
-        ]);
+        const seriesRes = await fetch(`${API_BASE}/api/series`);
         if (!seriesRes.ok) throw new Error('Không tải được danh sách series');
         const data = await seriesRes.json();
         setSeries(Array.isArray(data) ? data : []);
-        const cData = countriesRes.ok ? await countriesRes.json() : [];
-        setCountries(Array.isArray(cData) ? cData : []);
-        const gData = genresRes.ok ? await genresRes.json() : [];
-        setGenres(Array.isArray(gData) ? gData : []);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -67,68 +44,6 @@ function AdminSeriesListPage() {
       setSeries((prev) => prev.filter((s) => s.id !== id));
     } catch (err) {
       alert(err.message);
-    }
-  }
-
-  async function handleThumbnailFileChange(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    setError('');
-    setUploadingThumb(true);
-    try {
-      const token = getToken();
-      if (!token) {
-        setError('Cần đăng nhập admin để upload ảnh');
-        return;
-      }
-      const formData = new FormData();
-      formData.append('image', file);
-      const res = await fetch(`${API_BASE}/api/upload/image`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.message || 'Upload ảnh thất bại');
-      }
-      const data = await res.json();
-      setNewThumbnailUrl(data.image_url);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setUploadingThumb(false);
-    }
-  }
-
-  async function handleBannerFileChange(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    setError('');
-    setUploadingThumb(true);
-    try {
-      const token = getToken();
-      if (!token) {
-        setError('Cần đăng nhập admin để upload ảnh');
-        return;
-      }
-      const formData = new FormData();
-      formData.append('image', file);
-      const res = await fetch(`${API_BASE}/api/upload/image`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.message || 'Upload ảnh banner thất bại');
-      }
-      const data = await res.json();
-      setNewBannerUrl(data.image_url);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setUploadingThumb(false);
     }
   }
 
@@ -201,4 +116,3 @@ function AdminSeriesListPage() {
 }
 
 export default AdminSeriesListPage;
-

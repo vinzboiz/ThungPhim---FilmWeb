@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { formatTime } from '../../utils/formatTime';
 
 function clamp(n, min, max) {
   return Math.max(min, Math.min(max, n));
@@ -7,15 +8,6 @@ function clamp(n, min, max) {
 function snap(n, step) {
   if (!step || step <= 0) return n;
   return Math.round(n / step) * step;
-}
-
-export function formatTime(seconds) {
-  const s = Number(seconds);
-  if (!isFinite(s) || s < 0) return '00:00';
-  const total = Math.floor(s);
-  const m = Math.floor(total / 60);
-  const ss = total % 60;
-  return `${String(m).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
 }
 
 /**
@@ -139,10 +131,14 @@ export default function IntroRangeSlider({
     window.addEventListener('pointercancel', endDrag);
   };
 
-  useEffect(() => () => {
-    endDrag();
-    if (seekRaf.current != null) cancelAnimationFrame(seekRaf.current);
-  }, []);
+  useEffect(
+    () => () => {
+      endDrag();
+      if (seekRaf.current != null) cancelAnimationFrame(seekRaf.current);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- chỉ dọn khi unmount
+    [],
+  );
 
   const timeHint = `${formatTime(start)} → ${formatTime(end)} · intro ${formatTime(Math.max(0, end - start))}`;
 

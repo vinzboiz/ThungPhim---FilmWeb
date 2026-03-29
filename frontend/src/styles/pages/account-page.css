@@ -1,0 +1,113 @@
+.account-page {
+  padding: 32px;
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+.account-page__loading,
+.account-page__error {
+  padding: 24px;
+}
+
+.account-page__error-text {
+  color: #e53935;
+}
+
+.account-page__title {
+  margin-bottom: 24px;
+}
+
+.account-page__card {
+  background: rgba(30, 30, 30, 0.9);
+  border-radius: 8px;
+  padding: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.account-page__row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.account-page__avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #333;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  color: #888;
+  font-weight: 600;
+}
+
+.account-page__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.account-page__label {
+  margin: 0 0 4px;
+  color: #999;
+  font-size: 12px;
+}
+
+.account-page__name {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.account-page__email-label {
+  margin: 12px 0 4px;
+  color: #999;
+  font-size: 12px;
+}
+
+.account-page__email {
+  margin: 0;
+  font-size: 16px;
+  color: #ccc;
+}
+
+.account-page__admin-badge {
+  margin: 0 0 16px;
+  color: #46d369;
+  font-size: 14px;
+}
+
+.account-page__actions {
+  margin-top: 24px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.account-page__btn {
+  padding: 10px 20px;
+  border-radius: 4px;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.account-page__btn--primary {
+  background: #e50914;
+  color: #fff;
+}
+
+.account-page__btn--admin {
+  background: #333;
+  color: #fff;
+}
+
+.account-page__btn--ghost {
+  background: transparent;
+  color: #ccc;
+  border: 1px solid #666;
+}

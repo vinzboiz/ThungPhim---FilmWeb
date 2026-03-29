@@ -1,321 +1,259 @@
-# 🎬 ThungPhim
+# ThungPhim
 
-> Ứng dụng xem phim & series kiểu Netflix — banner hero có trailer, duyệt theo thể loại, xem phim/tập, "Danh sách của tôi", yêu thích, khu vực admin quản lý nội dung.
+A web application for browsing and watching movies and series (catalogue-style UX similar to major streaming platforms): home hero with trailer, genre and filter browsing, detail pages, playback, personal lists, favorites, watch history, and an admin area for content management.
 
-[![Java](https://img.shields.io/badge/Java-17+-ED8B00?logo=openjdk)](https://openjdk.org/)
-[![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.2-6DB33F?logo=spring)](https://spring.io/projects/spring-boot)
-[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react)](https://react.dev/)
-[![MySQL](https://img.shields.io/badge/MySQL-8+-4479A1?logo=mysql)](https://www.mysql.com/)
+**Primary stack:** React (Vite), Spring Boot, MySQL.
 
 ---
 
-## 📋 Mục lục
+## Contents
 
-- [Yêu cầu hệ thống](#-yêu-cầu-hệ-thống)
-- [Clone & chạy nhanh](#-clone--chạy-nhanh)
-- [Hướng dẫn chi tiết](#-hướng-dẫn-chi-tiết)
-- [Cấu trúc dự án](#-cấu-trúc-dự-án)
-- [Tính năng](#-tính-năng)
-- [Công nghệ](#-công-nghệ)
-- [Biến môi trường](#-biến-môi-trường)
-- [API](#-api)
-- [Lỗi thường gặp](#-lỗi-thường-gặp)
+1. [Prerequisites](#prerequisites)
+2. [Quick start](#quick-start)
+3. [Detailed setup](#detailed-setup)
+4. [Project structure](#project-structure)
+5. [Features](#features)
+6. [Technology stack](#technology-stack)
+7. [Environment variables](#environment-variables)
+8. [API overview](#api-overview)
+9. [Troubleshooting](#troubleshooting)
+10. [Common commands](#common-commands)
 
 ---
 
-## ✅ Yêu cầu hệ thống
+## Prerequisites
 
-| Công cụ | Phiên bản |
-|---------|-----------|
-| Java | 17 trở lên |
+| Tool | Suggested version |
+|------|-------------------|
+| Java | 17 or newer |
 | Maven | 3.6+ |
 | Node.js | 18+ |
 | MySQL | 8+ |
 
 ---
 
-## 🚀 Clone & chạy nhanh
+## Quick start
 
 ```bash
-# 1. Clone
-git clone https://github.com/vinzboiz/ThungPhim---FilmWeb.git
-cd ThungPhim---FilmWeb
+git clone <repository-url>
+cd MOVIE
 
-# 2. Tạo database và chạy schema
-# Mở HeidiSQL / MySQL Workbench → tạo DB "thungphim" → chạy file backend-spring/src/main/resources/schema.sql
+# Create the database and apply schema
+# Create a database named thungphim (utf8mb4), then run:
+# backend-spring/src/main/resources/schema.sql
 
-# 3. Tạo thư mục upload
+# Upload directories (create manually; not committed)
 mkdir -p uploads/images uploads/videos
 
-# 4. Chạy backend (Terminal 1)
+# Terminal 1 — Backend
 cd backend-spring
 mvn spring-boot:run
 
-# 5. Chạy frontend (Terminal 2)
+# Terminal 2 — Frontend
 cd frontend
 npm install
 npm run dev
 ```
 
-- **Backend API:** http://localhost:5000  
-- **Frontend:** http://localhost:8080  
+- **API:** `http://localhost:5000` (see `application.properties`)
+- **Web UI:** `http://localhost:8080` (see `frontend/vite.config.js`)
+
+The frontend calls the API using `API_BASE` in `frontend/src/apis/client.js` (default `http://localhost:5000`).
 
 ---
 
-## 📖 Hướng dẫn chi tiết
+## Detailed setup
 
-### Bước 1: Clone repository
+### 1. Database
 
-```bash
-git clone https://github.com/vinzboiz/ThungPhim---FilmWeb.git
-cd ThungPhim---FilmWeb
-```
-
-### Bước 2: Tạo database MySQL
-
-1. Mở **HeidiSQL** (hoặc MySQL Workbench / MySQL client).
-2. Kết nối MySQL, tạo database:
+1. Create the database:
 
 ```sql
 CREATE DATABASE thungphim CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
-3. Chọn database `thungphim`.
-4. Chạy file schema:
-   - **HeidiSQL:** File → Run SQL file... → chọn `backend-spring/src/main/resources/schema.sql` → Run (F9)
-   - **Hoặc:** Mở file `schema.sql` → copy nội dung → dán vào Query → Run
+2. Run `backend-spring/src/main/resources/schema.sql` against that database.
 
-### Bước 3: Cấu hình backend (nếu cần)
+3. Optional: apply extra SQL migrations under `backend-spring/src/main/resources/db/` when documented (e.g. skip-intro or other schema updates).
 
-Sửa `backend-spring/src/main/resources/application.properties` khi MySQL khác mặc định:
+### 2. Spring backend
 
-| Thuộc tính | Mặc định | Mô tả |
-|------------|----------|-------|
-| `server.port` | 5000 | Port API |
-| `DB_HOST` | 127.0.0.1 | Host MySQL |
-| `DB_PORT` | 3306 | Port MySQL |
-| `DB_USER` | root | User MySQL |
-| `DB_PASSWORD` | (trống) | Mật khẩu MySQL |
-| `DB_NAME` | thungphim | Tên database |
-| `jwt.secret` | (có sẵn) | **Production:** đổi ≥ 32 ký tự |
-| `app.google.client-id` | (có sẵn) | Client ID Google OAuth (xem mục [Đăng nhập Google](#đăng-nhập-bằng-google)) |
+Configuration file: `backend-spring/src/main/resources/application.properties`.
 
-### Bước 4: Tạo thư mục upload
+| Setting | Notes |
+|---------|--------|
+| `server.port` | Default `5000` |
+| `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | MySQL connection (overridable via environment) |
+| `jwt.secret` | **Production:** use a long random secret (32+ characters recommended) |
+| `app.google.client-id` | Google OAuth web client ID (backend verifies Google sign-in) |
+| `app.upload.root` | Upload root (default `../uploads` relative to the backend module) |
 
-Backend lưu ảnh và video vào thư mục `uploads/` ở thư mục gốc project:
+Ensure `uploads/images` and `uploads/videos` exist (typically at the repo root next to `backend-spring` and `frontend`).
 
-```bash
-mkdir -p uploads/images uploads/videos
-```
-
-> **Lưu ý:** Thư mục `uploads/` nằm trong `.gitignore`, clone mới sẽ không có. Bạn phải tạo thủ công.
-
-### Bước 5: Cấu hình frontend (nếu dùng Google đăng nhập)
+### 3. Frontend
 
 ```bash
 cd frontend
 cp .env.example .env
 ```
 
-Sửa `frontend/.env`:
+Edit `.env` if you use Google sign-in:
 
-```
-VITE_GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
-```
-
-### Bước 6: Chạy ứng dụng
-
-**Terminal 1 — Backend:**
-
-```bash
-cd backend-spring
-mvn spring-boot:run
+```env
+VITE_GOOGLE_CLIENT_ID=<client-id>.apps.googleusercontent.com
 ```
 
-→ API: http://localhost:5000  
+The value must match `app.google.client-id` on the backend and **Authorized JavaScript origins** in Google Cloud Console (e.g. `http://localhost:8080` for local dev).
 
-**Terminal 2 — Frontend:**
+### 4. Google sign-in (summary)
 
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-→ Web: http://localhost:8080  
-
-### Đăng nhập bằng Google
-
-1. Vào [Google Cloud Console](https://console.cloud.google.com/apis/credentials) → tạo dự án (hoặc chọn dự án có sẵn).
-2. **APIs & Services** → **Credentials** → **Create Credentials** → **OAuth client ID**.
-3. Chọn **Web application**.
-4. **Authorized JavaScript origins:** `http://localhost:8080` (thêm domain khi deploy production).
-5. **Authorized redirect URIs:** để trống (dùng Google Identity Services không cần redirect).
-6. Copy **Client ID** (dạng `xxx.apps.googleusercontent.com`).
-7. Cấu hình:
-   - **Backend Spring:** `backend-spring/.../application.properties` → `app.google.client-id=YOUR_CLIENT_ID`
-   - **Backend Node (tùy chọn):** `backend/.env` → `GOOGLE_CLIENT_ID=YOUR_CLIENT_ID` — endpoint `POST /api/auth/google` giống Spring
-   - **Frontend:** `.env` → `VITE_GOOGLE_CLIENT_ID=YOUR_CLIENT_ID`
-8. Restart backend và frontend.
+1. Google Cloud Console → APIs & Services → Credentials → OAuth 2.0 Client ID (Web application).
+2. **Authorized JavaScript origins:** add your frontend origin (dev: `http://localhost:8080`).
+3. Sync the Client ID into `application.properties` and `frontend/.env`, then restart backend and frontend.
 
 ---
 
-## 📁 Cấu trúc dự án
+## Project structure
 
 ```
-ThungPhim/
-├── backend/                 # API Node.js + Express (tùy chọn; cùng schema MySQL)
-│   ├── src/                 # routes, controllers, middleware
-│   ├── .env.example         # GOOGLE_CLIENT_ID, DB_*, JWT_SECRET
-│   └── README.md
-│
-├── backend-spring/          # API Spring Boot (Java 17, Maven) — backend chính
+MOVIE/
+├── backend/                 # Optional Node.js + Express API (same MySQL schema)
+├── backend-spring/          # Primary API (Spring Boot 3, Java 17)
 │   ├── src/main/java/com/thungphim/
-│   │   ├── controller/     # REST API (Auth, Movies, Series, Genres, ...)
-│   │   ├── service/        # Business logic
-│   │   ├── entity/         # JPA entities
-│   │   ├── repository/     # Spring Data JPA
-│   │   ├── config/         # Security, CORS, WebConfig
-│   │   ├── security/       # JWT filter, JwtUtil
-│   │   └── dto/            # DTOs
-│   ├── src/main/resources/
-│   │   ├── application.properties
-│   │   └── schema.sql      # Schema database
-│   └── pom.xml
-│
+│   │   ├── controller/
+│   │   ├── service/
+│   │   ├── entity/
+│   │   ├── repository/
+│   │   ├── config/
+│   │   ├── security/        # JWT, etc.
+│   │   └── dto/
+│   └── src/main/resources/
+│       ├── application.properties
+│       ├── schema.sql
+│       └── db/              # Optional extra SQL migrations
 ├── frontend/                # React + Vite
 │   ├── src/
-│   │   ├── apis/           # API client (client.js)
-│   │   ├── components/     # Layout, HeroBanner, GoogleSignInButton, ...
-│   │   ├── pages/          # HomePage, ContentDetailPage, Admin*, ...
-│   │   ├── providers/      # AuthContext
-│   │   ├── router/         # AppRouter
+│   │   ├── apis/            # HTTP client, token, profile helpers
+│   │   ├── components/
+│   │   ├── hooks/
+│   │   ├── pages/
+│   │   ├── providers/
+│   │   ├── router/
 │   │   ├── styles/
 │   │   └── utils/
-│   ├── .env.example        # Mẫu biến môi trường
-│   ├── package.json
-│   └── vite.config.js      # Port 8080, COOP header
-│
-├── uploads/                 # Media (gitignore — tạo thủ công)
-│   ├── images/             # Poster, banner, avatar
-│   └── videos/             # Phim, trailer, tập
-│
-├── .gitignore
+│   ├── .env.example
+│   └── vite.config.js
+├── uploads/                 # Uploaded media (gitignored; create locally)
+│   ├── images/
+│   └── videos/
 └── README.md
 ```
 
 ---
 
-## ✨ Tính năng
+## Features
 
-| Khu vực | Mô tả |
-|---------|-------|
-| **Trang chủ** | Hero banner ngẫu nhiên có trailer, các hàng Top rating / Mới / Theo thể loại, tìm kiếm. Chế độ: Tất cả, Chỉ phim, Chỉ series, Mới & phổ biến. |
-| **Chi tiết phim/series** | Thông tin đầy đủ (diễn viên, đạo diễn, thể loại, trailer). Hành động: Phát, Thêm vào danh sách, Thích. Series: danh sách season và tập. |
-| **Xem phim / tập** | Video player, tiếp tục xem, đánh giá & review, gợi ý xem tiếp. |
-| **Tài khoản & hồ sơ** | Đăng ký, đăng nhập, đăng nhập Google, nhiều hồ sơ mỗi tài khoản. Admin: khóa tài khoản. |
-| **Danh sách của tôi / Yêu thích** | Thêm/bỏ phim, series. Hiển thị dạng thẻ ngang như trang chủ. |
-| **Thể loại** | Lọc theo thể loại, năm, quốc gia; hỗ trợ phim và series. |
-| **Thông báo** | Chuông thông báo trong app (thêm watchlist, favorites, ...). |
-| **Lịch sử xem** | Hàng "Tiếp tục xem" và trang lịch sử. |
-| **Admin** | Quản lý phim, series, tập, thể loại, người dùng. Upload poster, banner, trailer, video. |
+| Area | Description |
+|------|-------------|
+| Home | Hero trailer banner, content rows, search; context filters (e.g. movies / series / new). |
+| Detail | Movie or series metadata, trailer, cast; series include seasons and episodes. |
+| Playback | Watch pages, progress, reviews, recommendations; intro / skip-intro depends on backend and schema. |
+| Account | Register, login, Google sign-in, profile selection; account page. |
+| Personalization | Watchlist, favorites, watch history, in-app notifications. |
+| Discovery | Genres, browse routes, dedicated search page. |
+| Admin | CRUD for movies, series, episodes, genres, people, users; image and video uploads. |
 
 ---
 
-## 🛠 Công nghệ
+## Technology stack
 
-| Thành phần | Công nghệ |
-|------------|-----------|
-| **Frontend** | React 19, React Router 7, Vite 7 |
-| **Backend** | Java 17, Spring Boot 3.2, Spring Security, Spring Data JPA |
-| **Database** | MySQL 8 |
-| **Upload** | Spring Multipart — ảnh: `uploads/images`, video: `uploads/videos` |
-| **Auth** | JWT (JJWT), BCrypt, Google OAuth 2.0 (xác thực ID token phía backend) |
-
----
-
-## 🔐 Biến môi trường
-
-### Backend (application.properties hoặc biến môi trường)
-
-| Biến | Mặc định | Mô tả |
-|------|----------|-------|
-| `DB_HOST` | 127.0.0.1 | MySQL host |
-| `DB_PORT` | 3306 | MySQL port |
-| `DB_USER` | root | MySQL user |
-| `DB_PASSWORD` | (trống) | MySQL password |
-| `DB_NAME` | thungphim | Tên database |
-| `jwt.secret` | (có sẵn) | Secret JWT — **≥ 32 ký tự** cho production |
-
-### Frontend (.env)
-
-| Biến | Bắt buộc | Mô tả |
-|------|----------|-------|
-| `VITE_GOOGLE_CLIENT_ID` | Không | Client ID Google OAuth — cần khi dùng đăng nhập Google |
-
-Copy từ `.env.example` sang `.env` rồi điền giá trị.
+| Layer | Technology |
+|-------|------------|
+| Frontend | React 19, React Router 7, Vite 7, ESLint |
+| Backend | Java 17, Spring Boot 3.2, Spring Security, Spring Data JPA |
+| Database | MySQL 8 |
+| Auth | JWT (JJWT), BCrypt; Google OAuth (ID token verified on the server) |
+| Upload | Multipart; files stored under `uploads/` |
 
 ---
 
-## 📡 API
+## Environment variables
 
-| Nhóm | Ví dụ endpoint | Mô tả |
-|------|----------------|-------|
-| **Auth** | `POST /api/auth/login`, `POST /api/auth/register`, `POST /api/auth/google` | Đăng nhập, đăng ký, Google |
-| **Phim** | `GET /api/movies`, `GET /api/movies/:id` | Danh sách, chi tiết |
-| **Series** | `GET /api/series`, `GET /api/series/:id/episodes` | Danh sách, chi tiết, tập |
-| **Hero** | `GET /api/hero/random?type=movie|series|featured` | Item random cho banner |
-| **Thể loại** | `GET /api/genres`, `GET /api/genres/top-with-movies` | Danh sách, top thể loại |
-| **Upload** | `POST /api/upload/image`, `POST /api/upload/video` | Upload ảnh, video |
-| **Watchlist** | `GET /api/watchlist`, `POST /api/watchlist` | Danh sách của tôi |
-| **Favorites** | `GET /api/favorites`, `POST /api/favorites` | Yêu thích |
-| **Watch** | `GET /api/watch/continue`, `POST /api/watch/progress` | Tiếp tục xem, lưu tiến độ |
-| **Admin** | `GET /api/admin/users`, `PATCH /api/admin/users/:id` | Quản lý người dùng |
+### Backend (`application.properties` or equivalent env vars)
 
-Chi tiết đầy đủ: `backend-spring/src/main/java/com/thungphim/controller/`.
+| `DB_*` variable | Purpose |
+|-----------------|---------|
+| `DB_HOST` | MySQL host |
+| `DB_PORT` | MySQL port |
+| `DB_USER` / `DB_PASSWORD` | MySQL credentials |
+| `DB_NAME` | Database name |
 
----
+### Frontend (`.env`)
 
-## 🔧 Lỗi thường gặp
-
-| Triệu chứng | Cách xử lý |
-|-------------|------------|
-| **Port 5000 đã sử dụng** | Tắt process chiếm port hoặc đổi `server.port` trong `application.properties`. |
-| **Không kết nối được MySQL** | Kiểm tra MySQL đang chạy; kiểm tra `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`. |
-| **Login 500 / WeakKeyException** | Đặt `jwt.secret` ≥ 32 ký tự trong `application.properties`. |
-| **Frontend không gọi được API** | Backend chạy port 5000; kiểm tra `API_BASE` trong `frontend/src/apis/client.js` là `http://localhost:5000`. |
-| **Lỗi CORS** | Backend CORS đã cấu hình `http://localhost:8080`. Đảm bảo frontend chạy đúng port. |
-| **Upload 404 / ảnh không hiện** | Tạo thư mục `uploads/images` và `uploads/videos` ở thư mục gốc project. |
-| **Google đăng nhập lỗi** | Kiểm tra Client ID khớp, Authorized JavaScript origins có `http://localhost:8080`. |
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `VITE_GOOGLE_CLIENT_ID` | No | Required only if Google sign-in is enabled in the UI |
 
 ---
 
-## 📜 Scripts
+## API overview
+
+Typical REST groups (prefix `/api`):
+
+| Group | Examples | Notes |
+|-------|----------|--------|
+| Auth | `POST /api/auth/login`, `POST /api/auth/register`, `POST /api/auth/google` | Returns JWT to the client |
+| Movies / Series | `GET /api/movies`, `GET /api/series`, `GET /api/series/:id/episodes` | Lists and detail |
+| Hero | `GET /api/hero/random` | Home banner |
+| Genres / Countries | `GET /api/genres`, `GET /api/countries` | Metadata |
+| Watchlist / Favorites | `GET` / `POST` / `DELETE` ... | Personal lists |
+| Watch progress | `GET` / `POST` ... `/watch/...` | Continue watching, save progress |
+| Upload | `POST /api/upload/image`, `POST /api/upload/video` | Authenticated uploads |
+| Admin | `GET` / `PATCH` ... `/api/admin/...` | User management, etc. |
+
+See `backend-spring/src/main/java/com/thungphim/controller/` for full endpoints.
+
+---
+
+## Troubleshooting
+
+| Symptom | What to check |
+|---------|----------------|
+| Port 5000 in use | Change `server.port` or stop the process using the port. |
+| Cannot connect to MySQL | MySQL service, `DB_*` values, firewall. |
+| JWT errors / weak key | Set a long `jwt.secret` in production. |
+| Frontend cannot reach API | Backend running; `API_BASE` in `client.js` matches the API URL. |
+| CORS | Backend must allow the frontend origin (e.g. `http://localhost:8080`). |
+| Uploads / images missing | Create `uploads/images` and `uploads/videos`; verify `app.upload.*` paths. |
+| Google sign-in fails | Client ID and JavaScript origins in Google Console; restart both apps. |
+
+---
+
+## Common commands
 
 **Backend (`backend-spring/`):**
 
-| Lệnh | Mô tả |
-|------|-------|
-| `mvn spring-boot:run` | Chạy server |
-| `mvn package` | Build JAR |
-| `mvn compile` | Chỉ compile |
+| Command | Description |
+|---------|-------------|
+| `mvn spring-boot:run` | Run the dev server |
+| `mvn package -DskipTests` | Build the JAR |
+| `mvn compile` | Compile only |
 
 **Frontend (`frontend/`):**
 
-| Script | Mô tả |
-|--------|-------|
-| `npm run dev` | Chạy dev server (port 8080) |
-| `npm run build` | Build production |
-| `npm run preview` | Xem trước build |
-| `npm run lint` | ESLint |
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Dev server (port 8080) |
+| `npm run build` | Production build |
+| `npm run preview` | Preview production build |
+| `npm run lint` | Run ESLint |
 
 ---
 
-## 📄 License & Liên hệ
+## License and contributions
 
-- **License:** ISC
-- **Liên hệ:** [GitHub Issues](https://github.com/vinzboiz/ThungPhim---FilmWeb/issues)
+Follow the conventions of this repository (Issues, Pull Requests). Add a `LICENSE` file at the repo root if you need an explicit license statement.
 
 ---
 
-*ThungPhim — xây dựng với React, Spring Boot và MySQL.*
+*This document describes the ThungPhim monorepo at a high level. Production deployment (HTTPS, reverse proxy, secrets management) should be documented for your own environment.*

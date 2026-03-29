@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { API_BASE, getToken, normalizeUploadError } from '../apis/client';
-import IntroRangeSlider, { formatTime } from '../components/player/IntroRangeSlider';
+import IntroRangeSlider from '../components/player/IntroRangeSlider';
+import { formatTime } from '../utils/formatTime';
 
 function AdminEditEpisodePage() {
   const { id: seriesId, episodeId } = useParams();

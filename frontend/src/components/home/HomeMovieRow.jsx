@@ -51,9 +51,11 @@ function HomeMovieRow({ title, items, onOpenInfo, onItemRemoved, onPlay }) {
   // Khi hover vào thẻ: lấy trạng thái watchlist + like để hiển thị nút đỏ
   useEffect(() => {
     if (!hoveredItem || !token || !profileId) {
-      setHoverAddedToWatchlist(false);
-      setHoverUserHasLiked(false);
-      return;
+      const resetTid = setTimeout(() => {
+        setHoverAddedToWatchlist(false);
+        setHoverUserHasLiked(false);
+      }, 0);
+      return () => clearTimeout(resetTid);
     }
     let cancelled = false;
     const type = hoveredItem.type === 'series' ? 'series' : 'movie';
@@ -79,7 +81,7 @@ function HomeMovieRow({ title, items, onOpenInfo, onItemRemoved, onPlay }) {
       }
     });
     return () => { cancelled = true; };
-  }, [hoveredItem?.id, hoveredItem?.type, token, profileId]);
+  }, [hoveredItem, token, profileId]);
 
   if (!items || items.length === 0) return null;
 

@@ -27,8 +27,11 @@ function GenresPage() {
   useEffect(() => {
     const g = searchParams.get('genre_id') || '';
     const t = searchParams.get('type') || '';
-    setFilterGenreId(g);
-    setFilterContentType(t);
+    const tid = setTimeout(() => {
+      setFilterGenreId(g);
+      setFilterContentType(t);
+    }, 0);
+    return () => clearTimeout(tid);
   }, [searchParams]);
 
   useEffect(() => {
@@ -49,77 +52,83 @@ function GenresPage() {
   }, []);
 
   useEffect(() => {
-    if (genres.length === 0) {
-      setGenreRows([]);
-      return;
-    }
-    const genreIdsToFetch = filterGenreId
-      ? [Number(filterGenreId)]
-      : genres.map((g) => g.id);
-
     let cancelled = false;
-    setGenreRows([]);
+    const tid = setTimeout(() => {
+      if (cancelled) return;
+      if (genres.length === 0) {
+        setGenreRows([]);
+        return;
+      }
+      const genreIdsToFetch = filterGenreId
+        ? [Number(filterGenreId)]
+        : genres.map((g) => g.id);
 
-    const params = new URLSearchParams();
-    params.set('limit', '10');
-    const currentYear = new Date().getFullYear();
-    const yFrom = filterYearFrom && !Number.isNaN(Number(filterYearFrom)) ? Number(filterYearFrom) : null;
-    let yTo = filterYearTo && !Number.isNaN(Number(filterYearTo)) ? Number(filterYearTo) : null;
-    if (yTo != null) {
-      if (yFrom != null && yTo < yFrom) yTo = currentYear;
-      if (yTo > currentYear) yTo = currentYear;
-    }
-    if (yFrom != null && yTo != null) {
-      params.set('year_from', String(yFrom));
-      params.set('year_to', String(yTo));
-    } else if (yFrom != null) {
-      params.set('year_from', String(yFrom));
-    } else if (yTo != null) {
-      params.set('year_to', String(yTo));
-    }
-    if (filterCountry) params.set('country_code', filterCountry);
+      setGenreRows([]);
 
-    const wantMovies = filterContentType !== 'series';
-    const wantSeries = filterContentType !== 'movie';
+      const params = new URLSearchParams();
+      params.set('limit', '10');
+      const currentYear = new Date().getFullYear();
+      const yFrom = filterYearFrom && !Number.isNaN(Number(filterYearFrom)) ? Number(filterYearFrom) : null;
+      let yTo = filterYearTo && !Number.isNaN(Number(filterYearTo)) ? Number(filterYearTo) : null;
+      if (yTo != null) {
+        if (yFrom != null && yTo < yFrom) yTo = currentYear;
+        if (yTo > currentYear) yTo = currentYear;
+      }
+      if (yFrom != null && yTo != null) {
+        params.set('year_from', String(yFrom));
+        params.set('year_to', String(yTo));
+      } else if (yFrom != null) {
+        params.set('year_from', String(yFrom));
+      } else if (yTo != null) {
+        params.set('year_to', String(yTo));
+      }
+      if (filterCountry) params.set('country_code', filterCountry);
 
-    const run = async () => {
-      const rows = [];
-      for (let i = 0; i < genreIdsToFetch.length; i++) {
-        if (cancelled) return;
-        const genreId = genreIdsToFetch[i];
-        const genre = genres.find((g) => g.id === genreId) || { id: genreId, name: 'Thể loại' };
-        let items = [];
-        if (wantMovies) {
-          const q = new URLSearchParams(params);
-          q.set('genre_id', String(genreId));
-          const res = await fetch(`${API_BASE}/api/movies?${q}`);
-          const list = res.ok ? await res.json() : [];
-          items = (list || []).map((m) => ({ ...m, type: 'movie' }));
-        }
-        if (wantSeries) {
-          const q = new URLSearchParams(params);
-          q.set('genre_id', String(genreId));
-          const res = await fetch(`${API_BASE}/api/series?${q}`);
-          const list = res.ok ? await res.json() : [];
-          const seriesItems = (list || []).map((s) => ({ ...s, type: 'series' }));
+      const wantMovies = filterContentType !== 'series';
+      const wantSeries = filterContentType !== 'movie';
+
+      const run = async () => {
+        const rows = [];
+        for (let i = 0; i < genreIdsToFetch.length; i++) {
+          if (cancelled) return;
+          const genreId = genreIdsToFetch[i];
+          const genre = genres.find((g) => g.id === genreId) || { id: genreId, name: 'Thể loại' };
+          let items = [];
           if (wantMovies) {
-            items = [...items, ...seriesItems].sort((a, b) => (b.id - a.id));
-          } else {
-            items = seriesItems;
+            const q = new URLSearchParams(params);
+            q.set('genre_id', String(genreId));
+            const res = await fetch(`${API_BASE}/api/movies?${q}`);
+            const list = res.ok ? await res.json() : [];
+            items = (list || []).map((m) => ({ ...m, type: 'movie' }));
           }
+          if (wantSeries) {
+            const q = new URLSearchParams(params);
+            q.set('genre_id', String(genreId));
+            const res = await fetch(`${API_BASE}/api/series?${q}`);
+            const list = res.ok ? await res.json() : [];
+            const seriesItems = (list || []).map((s) => ({ ...s, type: 'series' }));
+            if (wantMovies) {
+              items = [...items, ...seriesItems].sort((a, b) => (b.id - a.id));
+            } else {
+              items = seriesItems;
+            }
+          }
+          rows.push({ genre, movies: items });
         }
-        rows.push({ genre, movies: items });
-      }
-      if (!cancelled) {
-        const sorted = rows
-          .slice()
-          .sort((a, b) => (b.movies.length - a.movies.length));
-        setGenreRows(sorted);
-      }
-    };
-    run().catch(() => { if (!cancelled) setGenreRows([]); });
+        if (!cancelled) {
+          const sorted = rows
+            .slice()
+            .sort((a, b) => (b.movies.length - a.movies.length));
+          setGenreRows(sorted);
+        }
+      };
+      run().catch(() => { if (!cancelled) setGenreRows([]); });
+    }, 0);
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      clearTimeout(tid);
+    };
   }, [genres, filterGenreId, filterContentType, filterYearFrom, filterYearTo, filterCountry]);
 
   const handleApplyFilters = (e) => {

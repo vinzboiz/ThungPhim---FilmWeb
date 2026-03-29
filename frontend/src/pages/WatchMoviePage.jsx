@@ -3,18 +3,12 @@ import { useParams, Link, useLocation } from 'react-router-dom';
 import { api } from '../apis/client';
 import { API_BASE, getToken, getProfileId } from '../apis/client';
 import { pushClientNotification } from '../utils/notificationsClient';
+import { resolveMediaUrl } from '../utils/mediaUrl';
 import ReviewSection from '../components/ReviewSection';
 import DetailSuggestions from '../components/detail/DetailSuggestions';
 import HeroBanner from '../components/home/HeroBanner';
 import '../styles/pages/movie-detail.css';
 import '../styles/pages/watch-movie.css';
-
-function resolveVideoSrc(url) {
-  if (!url || !String(url).trim()) return null;
-  const u = String(url).trim();
-  if (u.startsWith('http://') || u.startsWith('https://')) return u;
-  return u.startsWith('/') ? `${API_BASE}${u}` : `${API_BASE}/${u.replace(/^\//, '')}`;
-}
 
 function WatchMoviePage() {
   const { id } = useParams();
@@ -56,9 +50,11 @@ function WatchMoviePage() {
   }, [id]);
 
   useEffect(() => {
-    if (continueSecondsFromState > 0) {
+    if (continueSecondsFromState <= 0) return;
+    const t = setTimeout(() => {
       setSavedProgress(continueSecondsFromState);
-    }
+    }, 0);
+    return () => clearTimeout(t);
   }, [continueSecondsFromState]);
 
   useEffect(() => {
@@ -73,7 +69,7 @@ function WatchMoviePage() {
       })
       .catch(() => {});
     return () => { cancelled = true; };
-  }, [token, profileId, id]);
+  }, [token, profileId, id, showContinuePrompt]);
 
   useEffect(() => {
     if (!token || !profileId || !movie) return;
@@ -239,7 +235,7 @@ function WatchMoviePage() {
     );
   }
 
-  const videoSrc = resolveVideoSrc(movie.video_url);
+  const videoSrc = resolveMediaUrl(movie.video_url);
   if (!videoSrc) {
     return (
       <div className="watch-movie">

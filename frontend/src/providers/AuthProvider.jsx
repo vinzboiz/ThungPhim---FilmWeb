@@ -1,8 +1,7 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { AuthContext } from '../contexts/auth-context.js';
 import { api, getToken, getProfileId, setProfileInfo, setAdminFlag, getIsAdmin } from '../apis/client';
 import { pushClientNotification } from '../utils/notificationsClient';
-
-const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [token, setTokenState] = useState(() => localStorage.getItem('token'));
@@ -15,8 +14,6 @@ export function AuthProvider({ children }) {
       localStorage.setItem('token', token);
     } else {
       localStorage.removeItem('token');
-      setUser(null);
-      setIsAdminState(false);
     }
   }, [token]);
 
@@ -88,10 +85,3 @@ export function AuthProvider({ children }) {
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
-
-export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
-  return ctx;
-}
-

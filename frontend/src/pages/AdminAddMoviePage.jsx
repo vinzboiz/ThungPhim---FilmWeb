@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api, apiFormData, API_BASE, getToken, normalizeUploadError } from '../apis/client';
-import { useAuth } from '../providers/AuthContext.jsx';
+import { useAuth } from '../hooks/useAuth.js';
 import '../styles/pages/admin-common.css';
 
 function AdminAddMoviePage() {

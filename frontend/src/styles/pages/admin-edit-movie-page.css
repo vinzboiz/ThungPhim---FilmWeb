@@ -1,0 +1,135 @@
+.admin-edit-movie-page h1 {
+  margin-bottom: 16px;
+}
+
+.admin-edit-movie-page .admin-form-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.admin-edit-movie-page .admin-intro-panel {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+}
+
+.admin-edit-movie-page .admin-intro-panel h3 {
+  margin: 0 0 8px;
+}
+
+.admin-edit-movie-page .admin-intro-panel .admin-intro-hint {
+  margin: 0 0 10px;
+  color: #aaa;
+  font-size: 13px;
+}
+
+.admin-edit-movie-page .admin-intro-video-wrap {
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  margin-bottom: 10px;
+}
+
+.admin-edit-movie-page .admin-intro-video {
+  width: 100%;
+  max-height: 260px;
+  border-radius: 0;
+  background: #000;
+  display: block;
+  margin-bottom: 0;
+  vertical-align: top;
+}
+
+.admin-edit-movie-page .admin-intro-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.admin-edit-movie-page .admin-intro-empty {
+  color: #888;
+  margin: 0;
+}
+
+.admin-edit-movie-page .admin-cast-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.admin-edit-movie-page .admin-cast-col h4 {
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+
+.admin-edit-movie-page .admin-cast-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.admin-edit-movie-page .admin-cast-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.admin-edit-movie-page .admin-cast-name {
+  font-size: 13px;
+}
+
+.admin-edit-movie-page .admin-cast-remove {
+  margin-left: auto;
+  color: #e53935;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.admin-edit-movie-page .admin-cast-muted {
+  color: #888;
+  font-size: 13px;
+}
+
+.admin-edit-movie-page .admin-cast-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 180px;
+  overflow-y: auto;
+  border: 1px solid #444;
+  padding: 6px;
+  border-radius: 4px;
+  margin-bottom: 6px;
+}
+
+.admin-edit-movie-page .admin-cast-picker label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.admin-edit-movie-page .admin-genre-checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+}
+
+.admin-edit-movie-page .admin-genre-checkboxes label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.admin-edit-movie-page .admin-select-country {
+  padding: 8px;
+  width: 100%;
+}

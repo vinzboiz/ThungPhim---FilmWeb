@@ -26,7 +26,7 @@ import WatchMoviePage from '../pages/WatchMoviePage.jsx';
 import WatchHistoryPage from '../pages/WatchHistoryPage.jsx';
 import AccountPage from '../pages/AccountPage.jsx';
 import MainLayout from '../components/layout/MainLayout.jsx';
-import { useAuth } from '../providers/AuthContext.jsx';
+import { useAuth } from '../hooks/useAuth.js';
 
 function AdminRoute({ children }) {
   const { isLoggedIn, isAdmin } = useAuth();

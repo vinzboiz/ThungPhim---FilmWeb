@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { API_BASE } from '../apis/client';
 import '../styles/pages/search.css';
@@ -11,16 +11,18 @@ function SearchPage() {
   const [series, setSeries] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (!q.trim()) {
+  const runSearch = useCallback((query) => {
+    const trimmed = query.trim();
+    if (!trimmed) {
       setMovies([]);
       setSeries([]);
+      setLoading(false);
       return;
     }
     setLoading(true);
     Promise.all([
-      fetch(`${API_BASE}/api/movies/search?q=${encodeURIComponent(q)}`).then((r) => (r.ok ? r.json() : [])),
-      fetch(`${API_BASE}/api/series/search?q=${encodeURIComponent(q)}`).then((r) => (r.ok ? r.json() : [])),
+      fetch(`${API_BASE}/api/movies/search?q=${encodeURIComponent(trimmed)}`).then((r) => (r.ok ? r.json() : [])),
+      fetch(`${API_BASE}/api/series/search?q=${encodeURIComponent(trimmed)}`).then((r) => (r.ok ? r.json() : [])),
     ])
       .then(([movieData, seriesData]) => {
         setMovies(Array.isArray(movieData) ? movieData : []);
@@ -31,7 +33,14 @@ function SearchPage() {
         setSeries([]);
       })
       .finally(() => setLoading(false));
-  }, [q]);
+  }, []);
+
+  useEffect(() => {
+    const tid = setTimeout(() => {
+      runSearch(q);
+    }, 0);
+    return () => clearTimeout(tid);
+  }, [q, runSearch]);
 
   const hasResults = movies.length > 0 || series.length > 0;
 

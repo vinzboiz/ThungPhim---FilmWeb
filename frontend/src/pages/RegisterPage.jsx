@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '../providers/AuthContext';
+import { useAuth } from '../hooks/useAuth.js';
 import { api } from '../apis/client';
 import GoogleSignInButton from '../components/GoogleSignInButton';
 

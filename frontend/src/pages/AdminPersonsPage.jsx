@@ -24,7 +24,7 @@ function AdminPersonsPage() {
   }
 
   useEffect(() => {
-    loadPersons(search).catch((err) => setError(err.message)).finally(() => setLoading(false));
+    loadPersons('').catch((err) => setError(err.message)).finally(() => setLoading(false));
   }, []);
 
   async function handleSearch(e) {

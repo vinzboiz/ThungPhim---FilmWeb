@@ -3,6 +3,10 @@
   padding: 24px;
 }
 
+.admin-page-loading {
+  padding: 24px;
+}
+
 .admin-page--narrow {
   max-width: 600px;
   margin: 0 auto;

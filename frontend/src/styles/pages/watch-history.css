@@ -1,0 +1,97 @@
+.watch-history {
+  padding: 24px;
+}
+
+.watch-history__loading {
+  padding: 24px;
+}
+
+.watch-history__intro {
+  color: #666;
+  margin-bottom: 16px;
+}
+
+.watch-history__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 16px;
+}
+
+.watch-history__card {
+  border: 1px solid #444;
+  border-radius: 8px;
+  padding: 8px;
+  background-color: #111;
+}
+
+.watch-history__thumb {
+  width: 100%;
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+
+.watch-history__title {
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.watch-history__meta {
+  font-size: 11px;
+  color: #888;
+}
+
+.watch-history__action {
+  margin-top: 8px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: #61dafb;
+  font-size: 12px;
+}
+
+.watch-history__overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.watch-history__dialog {
+  background-color: #222;
+  padding: 24px;
+  border-radius: 8px;
+  max-width: 360px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+.watch-history__dialog-title {
+  margin-top: 0;
+  margin-bottom: 12px;
+}
+
+.watch-history__dialog-text {
+  color: #ccc;
+  margin-bottom: 20px;
+}
+
+.watch-history__dialog-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.watch-history__btn {
+  padding: 8px 16px;
+  cursor: pointer;
+}
+
+.watch-history__btn--primary {
+  background-color: #61dafb;
+  color: #000;
+  border: none;
+  border-radius: 4px;
+}

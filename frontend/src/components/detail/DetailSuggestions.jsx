@@ -52,37 +52,45 @@ function DetailSuggestions({ type, contentId, onOpenInfo }) {
 
   useEffect(() => {
     let cancelled = false;
-    if (!contentId) {
-      setLoading(false);
-      return () => {};
-    }
-    if (type === 'movie') {
-      fetch(`${API_BASE}/api/movies/${contentId}/suggestions?limit=10`)
-        .then((r) => (r.ok ? r.json() : []))
-        .then((list) => {
-          if (!cancelled) setItems(Array.isArray(list) ? list : []);
-        })
-        .catch(() => { if (!cancelled) setItems([]); })
-        .finally(() => { if (!cancelled) setLoading(false); });
-    } else if (type === 'series') {
-      fetch(`${API_BASE}/api/series/${contentId}/suggestions?limit=10`)
-        .then((r) => (r.ok ? r.json() : []))
-        .then((list) => {
-          if (!cancelled) setItems(Array.isArray(list) ? list : []);
-        })
-        .catch(() => { if (!cancelled) setItems([]); })
-        .finally(() => { if (!cancelled) setLoading(false); });
-    } else {
-      setLoading(false);
-    }
-    return () => { cancelled = true; };
+    const tid = setTimeout(() => {
+      if (cancelled) return;
+      if (!contentId) {
+        setLoading(false);
+        return;
+      }
+      if (type === 'movie') {
+        fetch(`${API_BASE}/api/movies/${contentId}/suggestions?limit=10`)
+          .then((r) => (r.ok ? r.json() : []))
+          .then((list) => {
+            if (!cancelled) setItems(Array.isArray(list) ? list : []);
+          })
+          .catch(() => { if (!cancelled) setItems([]); })
+          .finally(() => { if (!cancelled) setLoading(false); });
+      } else if (type === 'series') {
+        fetch(`${API_BASE}/api/series/${contentId}/suggestions?limit=10`)
+          .then((r) => (r.ok ? r.json() : []))
+          .then((list) => {
+            if (!cancelled) setItems(Array.isArray(list) ? list : []);
+          })
+          .catch(() => { if (!cancelled) setItems([]); })
+          .finally(() => { if (!cancelled) setLoading(false); });
+      } else {
+        setLoading(false);
+      }
+    }, 0);
+    return () => {
+      cancelled = true;
+      clearTimeout(tid);
+    };
   }, [type, contentId]);
 
   useEffect(() => {
     if (!hoveredItem || !token || !profileId) {
-      setHoverAddedToWatchlist(false);
-      setHoverUserHasLiked(false);
-      return;
+      const resetTid = setTimeout(() => {
+        setHoverAddedToWatchlist(false);
+        setHoverUserHasLiked(false);
+      }, 0);
+      return () => clearTimeout(resetTid);
     }
     let cancelled = false;
     const contentType = hoveredItem.type === 'series' ? 'series' : 'movie';
@@ -108,7 +116,7 @@ function DetailSuggestions({ type, contentId, onOpenInfo }) {
       }
     });
     return () => { cancelled = true; };
-  }, [hoveredItem?.id, hoveredItem?.type, token, profileId]);
+  }, [hoveredItem, token, profileId]);
 
   const handleCardEnter = (item, e) => {
     if (leaveTimeoutRef.current) {

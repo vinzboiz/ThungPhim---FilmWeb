@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { API_BASE, getToken } from '../apis/client';
 import '../styles/components/review-section.css';
 
@@ -21,7 +21,7 @@ function ReviewSection({ contentType, contentId, title, initialLimit = REVIEW_PA
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const [userId, setUserId] = useState(null);
+  const [meUserId, setMeUserId] = useState(null);
   const token = getToken();
 
   const endpoint = contentType === 'movie'
@@ -30,7 +30,7 @@ function ReviewSection({ contentType, contentId, title, initialLimit = REVIEW_PA
       ? `/api/reviews/series/${contentId}`
       : `/api/reviews/episodes/${contentId}`;
 
-  const loadReviews = (limit = initialLimit, offset = 0, append = false) => {
+  const loadReviews = useCallback((limit = initialLimit, offset = 0, append = false) => {
     if (!contentId) return;
     if (!append) setLoading(true);
     else setLoadingMore(true);
@@ -46,27 +46,41 @@ function ReviewSection({ contentType, contentId, title, initialLimit = REVIEW_PA
       })
       .catch(() => { if (!append) setReviews([]); })
       .finally(() => { setLoading(false); setLoadingMore(false); });
-  };
+  }, [contentId, endpoint, initialLimit]);
 
   const loadMore = () => {
     loadReviews(REVIEW_PAGE_SIZE, reviews.length, true);
   };
 
   useEffect(() => {
-    loadReviews(initialLimit, 0, false);
-  }, [contentType, contentId]);
+    if (!contentId) return;
+    let cancelled = false;
+    const tid = setTimeout(() => {
+      if (!cancelled) loadReviews(initialLimit, 0, false);
+    }, 0);
+    return () => {
+      cancelled = true;
+      clearTimeout(tid);
+    };
+  }, [contentType, contentId, initialLimit, loadReviews]);
 
-  // Lấy user_id của tài khoản đăng nhập (để đánh dấu đánh giá "của mình")
   useEffect(() => {
-    if (!token) {
-      setUserId(null);
-      return;
-    }
+    if (!token) return;
+    let cancelled = false;
     fetch(`${API_BASE}/api/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => (r.ok ? r.json() : null))
-      .then((data) => data && setUserId(data.id))
-      .catch(() => setUserId(null));
+      .then((data) => {
+        if (!cancelled && data) setMeUserId(data.id);
+      })
+      .catch(() => {
+        if (!cancelled) setMeUserId(null);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [token]);
+
+  const effectiveUserId = token ? meUserId : null;
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -161,7 +175,7 @@ function ReviewSection({ contentType, contentId, title, initialLimit = REVIEW_PA
           <ul className="review-section-list">
             {reviews.length === 0 && <li className="review-section-empty">Chưa có đánh giá nào.</li>}
             {reviews.map((r) => (
-              <li key={r.id} className={`review-section-item ${String(r.user_id) === String(userId) ? 'is-mine' : ''}`}>
+              <li key={r.id} className={`review-section-item ${String(r.user_id) === String(effectiveUserId) ? 'is-mine' : ''}`}>
                 <div className="review-section-item-header">
                   <span className="review-section-item-name">{r.profile_name || 'Thành viên'}</span>
                   <span className="review-section-item-stars">

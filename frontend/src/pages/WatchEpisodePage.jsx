@@ -1,17 +1,12 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import { API_BASE, getToken, getProfileId } from '../apis/client';
+import { resolveMediaUrl } from '../utils/mediaUrl';
 import ReviewSection from '../components/ReviewSection';
 import DetailSuggestions from '../components/detail/DetailSuggestions';
 import HeroBanner from '../components/home/HeroBanner';
 import '../styles/pages/watch-movie.css';
-
-function resolveVideoSrc(url) {
-  if (!url || !String(url).trim()) return null;
-  const u = String(url).trim();
-  if (u.startsWith('http://') || u.startsWith('https://')) return u;
-  return u.startsWith('/') ? `${API_BASE}${u}` : `${API_BASE}/${u.replace(/^\//, '')}`;
-}
+import '../styles/pages/watch-episode.css';
 
 function WatchEpisodePage() {
   const { episodeId } = useParams();
@@ -54,9 +49,11 @@ function WatchEpisodePage() {
   }, [episodeId]);
 
   useEffect(() => {
-    if (continueSecondsFromState > 0) {
+    if (continueSecondsFromState <= 0) return;
+    const t = setTimeout(() => {
       setSavedProgress(continueSecondsFromState);
-    }
+    }, 0);
+    return () => clearTimeout(t);
   }, [continueSecondsFromState]);
 
   useEffect(() => {
@@ -71,7 +68,7 @@ function WatchEpisodePage() {
       })
       .catch(() => {});
     return () => { cancelled = true; };
-  }, [fromStart, token, profileId, episodeId]);
+  }, [fromStart, token, profileId, episodeId, showContinuePrompt]);
 
   const saveProgress = useCallback(
     (seconds) => {
@@ -125,14 +122,7 @@ function WatchEpisodePage() {
       showSkipRef.current = false;
       setShowSkipIntro(false);
     }
-  }, [
-    saveProgress,
-    episode?.intro_mode,
-    episode?.intro_start_seconds,
-    episode?.intro_end_seconds,
-    episode?.series_intro_start_seconds,
-    episode?.series_intro_end_seconds,
-  ]);
+  }, [saveProgress, episode]);
 
   const handlePause = useCallback(() => {
     if (videoRef.current) saveProgress(Math.floor(videoRef.current.currentTime));
@@ -190,13 +180,13 @@ function WatchEpisodePage() {
     }
   }, []);
 
-  if (loading) return <div style={{ padding: '24px' }}>Đang tải...</div>;
-  if (error || !episode) return <div style={{ padding: '24px', color: 'red' }}>{error || 'Không tìm thấy tập'}</div>;
+  if (loading) return <div className="watch-episode__loading">Đang tải...</div>;
+  if (error || !episode) return <div className="watch-episode__error">{error || 'Không tìm thấy tập'}</div>;
 
-  const videoSrc = resolveVideoSrc(episode.video_url);
+  const videoSrc = resolveMediaUrl(episode.video_url);
 
   return (
-    <div style={{ padding: '24px', maxWidth: '900px', margin: '0 auto' }}>
+    <div className="watch-episode">
       {showContinuePrompt && savedProgress > 0 && (
         <div className="watch-movie-continue-overlay">
           <div className="watch-movie-continue-dialog">
@@ -243,40 +233,30 @@ function WatchEpisodePage() {
         </div>
       )}
       <p>
-        <Link to={episode.series_id ? `/series/${episode.series_id}` : '/'} style={{ color: '#61dafb' }}>
+        <Link to={episode.series_id ? `/series/${episode.series_id}` : '/'} className="watch-episode__back">
           ← Quay lại series
         </Link>
       </p>
       <h1>Tập {episode.episode_number}: {episode.title}</h1>
-      {episode.description && <p style={{ color: '#ccc' }}>{episode.description}</p>}
+      {episode.description && <p className="watch-episode__desc">{episode.description}</p>}
 
       {/* Khu vực video: luôn hiển thị, có video thì phát, không thì placeholder */}
-      <div
-        style={{
-          width: '100%',
-          maxHeight: '480px',
-          backgroundColor: '#000',
-          borderRadius: '8px',
-          overflow: 'hidden',
-          marginBottom: '24px',
-          position: 'relative',
-        }}
-      >
+      <div className="watch-episode__video-shell">
         {videoSrc ? (
           <>
-            <p style={{ fontSize: '13px', color: '#888', marginBottom: '8px' }}>Nhấn vào vùng video rồi dùng: Space (phát/tạm dừng), ← → (tua 10 giây, tự lưu lịch sử).</p>
+            <p className="watch-episode__hint">Nhấn vào vùng video rồi dùng: Space (phát/tạm dừng), ← → (tua 10 giây, tự lưu lịch sử).</p>
             <div
               ref={videoWrapRef}
               tabIndex={0}
               role="button"
               onClick={() => videoWrapRef.current?.focus()}
               onKeyDown={handleVideoKeyDown}
-              style={{ outline: 'none', position: 'relative' }}
+              className="watch-episode__video-focus"
             >
               <video
                 ref={videoRef}
                 controls
-                style={{ width: '100%', maxHeight: '400px', display: 'block' }}
+                className="watch-episode__video"
                 src={videoSrc}
                 onLoadedMetadata={handleVideoLoaded}
                 onTimeUpdate={handleTimeUpdate}
@@ -290,7 +270,6 @@ function WatchEpisodePage() {
                 <button
                   type="button"
                   className="watch-skip-intro-btn"
-                  style={{ right: 16, bottom: 16 }}
                   onClick={() => {
                     const v = videoRef.current;
                     const mode = (episode?.intro_mode || 'series').toString().toLowerCase();
@@ -307,16 +286,7 @@ function WatchEpisodePage() {
             </div>
           </>
         ) : (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              minHeight: '280px',
-              color: '#888',
-              fontSize: '16px',
-            }}
-          >
+          <div className="watch-episode__placeholder">
             Chưa có video cho tập này.
           </div>
         )}

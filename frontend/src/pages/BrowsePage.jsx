@@ -26,39 +26,47 @@ function BrowsePage() {
       navigate('/');
       return;
     }
-    setLoading(true);
-    setError('');
-    const { slug } = config;
-    if (slug === 'series') {
-      fetch(`${API_BASE}/api/series`)
-        .then((r) => (r.ok ? r.json() : []))
-        .then((data) => setSeries(Array.isArray(data) ? data : []))
-        .catch((err) => setError(err.message))
-        .finally(() => setLoading(false));
-      setMovies([]);
-      setTrending([]);
-    } else if (slug === 'movies') {
-      fetch(`${API_BASE}/api/movies`)
-        .then((r) => (r.ok ? r.json() : []))
-        .then((data) => setMovies(Array.isArray(data) ? data : []))
-        .catch((err) => setError(err.message))
-        .finally(() => setLoading(false));
-      setSeries([]);
-      setTrending([]);
-    } else if (slug === 'new') {
-      Promise.all([
-        fetch(`${API_BASE}/api/movies/trending`).then((r) => (r.ok ? r.json() : [])),
-        fetch(`${API_BASE}/api/movies`).then((r) => (r.ok ? r.json() : [])),
-        fetch(`${API_BASE}/api/series`).then((r) => (r.ok ? r.json() : [])),
-      ])
-        .then(([trendingRes, moviesRes, seriesRes]) => {
-          setTrending(Array.isArray(trendingRes) ? trendingRes : []);
-          setMovies(Array.isArray(moviesRes) ? moviesRes : []);
-          setSeries(Array.isArray(seriesRes) ? seriesRes : []);
-        })
-        .catch((err) => setError(err.message))
-        .finally(() => setLoading(false));
-    }
+    let cancelled = false;
+    const tid = setTimeout(() => {
+      if (cancelled) return;
+      setLoading(true);
+      setError('');
+      const { slug } = config;
+      if (slug === 'series') {
+        fetch(`${API_BASE}/api/series`)
+          .then((r) => (r.ok ? r.json() : []))
+          .then((data) => setSeries(Array.isArray(data) ? data : []))
+          .catch((err) => setError(err.message))
+          .finally(() => setLoading(false));
+        setMovies([]);
+        setTrending([]);
+      } else if (slug === 'movies') {
+        fetch(`${API_BASE}/api/movies`)
+          .then((r) => (r.ok ? r.json() : []))
+          .then((data) => setMovies(Array.isArray(data) ? data : []))
+          .catch((err) => setError(err.message))
+          .finally(() => setLoading(false));
+        setSeries([]);
+        setTrending([]);
+      } else if (slug === 'new') {
+        Promise.all([
+          fetch(`${API_BASE}/api/movies/trending`).then((r) => (r.ok ? r.json() : [])),
+          fetch(`${API_BASE}/api/movies`).then((r) => (r.ok ? r.json() : [])),
+          fetch(`${API_BASE}/api/series`).then((r) => (r.ok ? r.json() : [])),
+        ])
+          .then(([trendingRes, moviesRes, seriesRes]) => {
+            setTrending(Array.isArray(trendingRes) ? trendingRes : []);
+            setMovies(Array.isArray(moviesRes) ? moviesRes : []);
+            setSeries(Array.isArray(seriesRes) ? seriesRes : []);
+          })
+          .catch((err) => setError(err.message))
+          .finally(() => setLoading(false));
+      }
+    }, 0);
+    return () => {
+      cancelled = true;
+      clearTimeout(tid);
+    };
   }, [config, navigate]);
 
   if (!config) return null;

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../providers/AuthContext';
-import { api, API_BASE, getToken } from '../apis/client';
+import { useAuth } from '../hooks/useAuth.js';
+import { api, getToken } from '../apis/client';
+import '../styles/pages/account-page.css';
 
 function AccountPage() {
   const { isLoggedIn } = useAuth();
@@ -30,7 +31,7 @@ function AccountPage() {
 
   if (loading) {
     return (
-      <div style={{ padding: '24px' }}>
+      <div className="account-page__loading">
         <p>Đang tải thông tin tài khoản...</p>
       </div>
     );
@@ -38,46 +39,23 @@ function AccountPage() {
 
   if (error) {
     return (
-      <div style={{ padding: '24px' }}>
-        <p style={{ color: 'red' }}>{error}</p>
+      <div className="account-page__error">
+        <p className="account-page__error-text">{error}</p>
         <Link to="/">Về trang chủ</Link>
       </div>
     );
   }
 
   return (
-    <div style={{ padding: '32px', maxWidth: '560px', margin: '0 auto' }}>
-      <h1 style={{ marginBottom: '24px' }}>Thông tin tài khoản</h1>
-      <div
-        style={{
-          background: 'rgba(30,30,30,0.9)',
-          borderRadius: '8px',
-          padding: '24px',
-          border: '1px solid rgba(255,255,255,0.1)',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '20px' }}>
-          <div
-            style={{
-              width: 80,
-              height: 80,
-              borderRadius: '50%',
-              overflow: 'hidden',
-              background: '#333',
-              flexShrink: 0,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: 28,
-              color: '#888',
-              fontWeight: 600,
-            }}
-          >
+    <div className="account-page">
+      <h1 className="account-page__title">Thông tin tài khoản</h1>
+      <div className="account-page__card">
+        <div className="account-page__row">
+          <div className="account-page__avatar">
             {user?.avatar_url ? (
               <img
                 src={user.avatar_url}
                 alt=""
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 referrerPolicy="no-referrer"
               />
             ) : (
@@ -85,56 +63,28 @@ function AccountPage() {
             )}
           </div>
           <div>
-            <p style={{ margin: '0 0 4px', color: '#999', fontSize: 12 }}>Họ tên</p>
-            <p style={{ margin: 0, fontSize: '18px', fontWeight: 500 }}>{user?.full_name || '—'}</p>
-            <p style={{ margin: '12px 0 4px', color: '#999', fontSize: 12 }}>Email</p>
-            <p style={{ margin: 0, fontSize: '16px', color: '#ccc' }}>{user?.email || '—'}</p>
+            <p className="account-page__label">Họ tên</p>
+            <p className="account-page__name">{user?.full_name || '—'}</p>
+            <p className="account-page__email-label">Email</p>
+            <p className="account-page__email">{user?.email || '—'}</p>
           </div>
         </div>
         {user?.is_admin && (
-          <p style={{ margin: '0 0 16px', color: '#46d369', fontSize: '14px' }}>
+          <p className="account-page__admin-badge">
             Tài khoản quản trị
           </p>
         )}
       </div>
-      <div style={{ marginTop: '24px', display: 'flex', gap: '12px' }}>
-        <Link
-          to="/profiles"
-          style={{
-            padding: '10px 20px',
-            background: '#e50914',
-            color: '#fff',
-            borderRadius: '4px',
-            textDecoration: 'none',
-          }}
-        >
+      <div className="account-page__actions">
+        <Link to="/profiles" className="account-page__btn account-page__btn--primary">
           Quản lý hồ sơ
         </Link>
         {user?.is_admin && (
-          <Link
-            to="/admin"
-            style={{
-              padding: '10px 20px',
-              background: '#333',
-              color: '#fff',
-              borderRadius: '4px',
-              textDecoration: 'none',
-            }}
-          >
+          <Link to="/admin" className="account-page__btn account-page__btn--admin">
             Quản trị website
           </Link>
         )}
-        <Link
-          to="/"
-          style={{
-            padding: '10px 20px',
-            background: 'transparent',
-            color: '#ccc',
-            borderRadius: '4px',
-            textDecoration: 'none',
-            border: '1px solid #666',
-          }}
-        >
+        <Link to="/" className="account-page__btn account-page__btn--ghost">
           Về trang chủ
         </Link>
       </div>
