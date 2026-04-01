@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { API_BASE } from '../../apis/client';
+import { posterImageResponsiveProps, resolveMediaUrl } from '../../utils/mediaUrl';
 import MovieCard from './MovieCard.jsx';
 import '../../styles/components/home-search-section.css';
 
@@ -72,13 +73,20 @@ function HomeSearchSection({ query }) {
               <div className="section-grid">
                 {series.map((s) => (
                   <div key={`s-${s.id}`} className="card">
-                    {s.thumbnail_url && (
-                      <img
-                        src={`${API_BASE}${s.thumbnail_url}`}
-                        alt={s.title}
-                        className="card-img"
-                      />
-                    )}
+                    {s.thumbnail_url && (() => {
+                      const imgProps = posterImageResponsiveProps(resolveMediaUrl(s.thumbnail_url));
+                      return imgProps ? (
+                        <img
+                          alt=""
+                          className="card-img"
+                          width={400}
+                          height={225}
+                          decoding="async"
+                          loading="lazy"
+                          {...imgProps}
+                        />
+                      ) : null;
+                    })()}
                     <h3 className="card-title">{s.title}</h3>
                     {s.age_rating && <span className="card-badge">{s.age_rating}</span>}
                     <Link to={`/series/${s.id}`} className="link-accent link-accent--block">

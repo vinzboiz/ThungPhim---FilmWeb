@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { API_BASE } from '../apis/client';
+import { posterImageResponsiveProps, resolveMediaUrl } from '../utils/mediaUrl';
 import '../styles/pages/search.css';
 import '../styles/components/card.css';
 
@@ -77,9 +78,13 @@ function SearchPage() {
             {series.map((s) => (
               <Link key={`s-${s.id}`} to={`/series/${s.id}`} className="search-page-link">
                 <div className="search-page-card card">
-                  {s.thumbnail_url && (
-                    <img src={`${API_BASE}${s.thumbnail_url}`} alt={s.title} className="card-img" />
-                  )}
+                  {s.thumbnail_url &&
+                    (() => {
+                      const p = posterImageResponsiveProps(resolveMediaUrl(s.thumbnail_url));
+                      return p ? (
+                        <img alt="" width={400} height={225} decoding="async" loading="lazy" className="card-img" {...p} />
+                      ) : null;
+                    })()}
                   <h3 className="card-title">{s.title}</h3>
                   {s.release_year && <span className="card-badge">{s.release_year}</span>}
                 </div>

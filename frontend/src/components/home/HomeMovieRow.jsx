@@ -1,6 +1,13 @@
-import { useRef, useState, useEffect } from 'react';
+import {
+  useRef,
+  useState,
+  useEffect,
+  useCallback,
+  memo,
+} from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { API_BASE, api, getToken, getProfileId } from '../../apis/client';
+import { posterImageResponsiveProps } from '../../utils/mediaUrl';
 import { pushClientNotification } from '../../utils/notificationsClient';
 import '../../styles/components/home-movie-row.css';
 
@@ -36,6 +43,26 @@ function ChevronDownIcon({ className }) {
     </svg>
   );
 }
+
+/** Ảnh poster trong hàng: srcset + sizes + lazy (trừ vài thẻ đầu) */
+const RowPosterImg = memo(function RowPosterImg({ alt, imgUrl, loading, fetchPriority }) {
+  const props = posterImageResponsiveProps(imgUrl);
+  if (!props) {
+    return <div className="home-movie-row-img home-movie-row-img--placeholder" />;
+  }
+  return (
+    <img
+      alt={alt}
+      className="home-movie-row-img"
+      width={320}
+      height={180}
+      decoding="async"
+      fetchPriority={fetchPriority}
+      loading={loading}
+      {...props}
+    />
+  );
+});
 
 function HomeMovieRow({ title, items, onOpenInfo, onItemRemoved, onPlay }) {
   const scrollRef = useRef(null);
@@ -83,18 +110,16 @@ function HomeMovieRow({ title, items, onOpenInfo, onItemRemoved, onPlay }) {
     return () => { cancelled = true; };
   }, [hoveredItem, token, profileId]);
 
-  if (!items || items.length === 0) return null;
-
-  const scroll = (dir) => {
+  const scroll = useCallback((dir) => {
     const el = scrollRef.current;
     if (!el) return;
     const cardWidth = 280;
     const gap = 16;
     const scrollAmount = (cardWidth + gap) * 3;
     el.scrollBy({ left: dir * scrollAmount, behavior: 'smooth' });
-  };
+  }, []);
 
-  const handleCardEnter = (item, e) => {
+  const handleCardEnter = useCallback((item, e) => {
     if (leaveTimeoutRef.current) {
       clearTimeout(leaveTimeoutRef.current);
       leaveTimeoutRef.current = null;
@@ -102,26 +127,26 @@ function HomeMovieRow({ title, items, onOpenInfo, onItemRemoved, onPlay }) {
     const el = e.currentTarget;
     setCardRect(el.getBoundingClientRect());
     setHoveredItem(item);
-  };
+  }, []);
 
-  const handleCardLeave = () => {
+  const handleCardLeave = useCallback(() => {
     leaveTimeoutRef.current = setTimeout(() => {
       setHoveredItem(null);
       setCardRect(null);
     }, 150);
-  };
+  }, []);
 
-  const handlePanelEnter = () => {
+  const handlePanelEnter = useCallback(() => {
     if (leaveTimeoutRef.current) {
       clearTimeout(leaveTimeoutRef.current);
       leaveTimeoutRef.current = null;
     }
-  };
+  }, []);
 
-  const handlePanelLeave = () => {
+  const handlePanelLeave = useCallback(() => {
     setHoveredItem(null);
     setCardRect(null);
-  };
+  }, []);
 
   const getPanelStyle = () => {
     if (!cardRect) return { visibility: 'hidden' };
@@ -135,7 +160,7 @@ function HomeMovieRow({ title, items, onOpenInfo, onItemRemoved, onPlay }) {
     return { left, top };
   };
 
-  const handlePlay = (e, item) => {
+  const handlePlay = useCallback((e, item) => {
     e.preventDefault();
     e.stopPropagation();
     if (onPlay) {
@@ -148,7 +173,7 @@ function HomeMovieRow({ title, items, onOpenInfo, onItemRemoved, onPlay }) {
       navigate(`/movies/${item.id}`);
     }
     setHoveredItem(null);
-  };
+  }, [navigate, onPlay]);
 
   const handleAddWatchlist = async (e, item) => {
     e.preventDefault();
@@ -223,15 +248,16 @@ function HomeMovieRow({ title, items, onOpenInfo, onItemRemoved, onPlay }) {
     }
   };
 
-  const handleExpand = (e, item) => {
+  const handleExpand = useCallback((e, item) => {
     e.preventDefault();
     e.stopPropagation();
     if (onOpenInfo) {
       onOpenInfo({ ...item, type: item.type || 'movie' });
-      // Đóng hover panel sau khi parent đã nhận state, để modal HeroBanner kịp hiện
       setTimeout(() => setHoveredItem(null), 0);
     }
-  };
+  }, [onOpenInfo]);
+
+  if (!items || items.length === 0) return null;
 
   return (
     <section className="home-movie-row">
@@ -246,9 +272,10 @@ function HomeMovieRow({ title, items, onOpenInfo, onItemRemoved, onPlay }) {
           ‹
         </button>
         <div ref={scrollRef} className="home-movie-row-track">
-          {items.map((item) => {
+          {items.map((item, index) => {
             const link = getLink(item);
             const imgUrl = getImageUrl(item);
+            const eagerFirst = index < 4;
             return (
               <div
                 key={`${item.type || 'movie'}-${item.id}`}
@@ -259,7 +286,12 @@ function HomeMovieRow({ title, items, onOpenInfo, onItemRemoved, onPlay }) {
                 <Link to={link} className="home-movie-row-card">
                   <div className="home-movie-row-img-wrap">
                     {imgUrl ? (
-                      <img src={imgUrl} alt={item.title} className="home-movie-row-img" />
+                      <RowPosterImg
+                        alt={item.title}
+                        imgUrl={imgUrl}
+                        loading={eagerFirst ? 'eager' : 'lazy'}
+                        fetchPriority={eagerFirst ? 'high' : undefined}
+                      />
                     ) : (
                       <div className="home-movie-row-img home-movie-row-img--placeholder" />
                     )}
@@ -307,11 +339,22 @@ function HomeMovieRow({ title, items, onOpenInfo, onItemRemoved, onPlay }) {
                 ×
               </button>
             )}
-            {getImageUrl(hoveredItem) ? (
-              <img src={getImageUrl(hoveredItem)} alt="" className="home-movie-row-hover-img" />
-            ) : (
-              <div className="home-movie-row-hover-img home-movie-row-hover-img--placeholder" />
-            )}
+            {(() => {
+              const hoverUrl = getImageUrl(hoveredItem);
+              const hoverProps = posterImageResponsiveProps(hoverUrl);
+              return hoverProps ? (
+                <img
+                  alt=""
+                  className="home-movie-row-hover-img"
+                  width={320}
+                  height={150}
+                  decoding="async"
+                  {...hoverProps}
+                />
+              ) : (
+                <div className="home-movie-row-hover-img home-movie-row-hover-img--placeholder" />
+              );
+            })()}
           </div>
           <div className="home-movie-row-hover-actions">
             <button
@@ -362,4 +405,4 @@ function HomeMovieRow({ title, items, onOpenInfo, onItemRemoved, onPlay }) {
   );
 }
 
-export default HomeMovieRow;
+export default memo(HomeMovieRow);

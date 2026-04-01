@@ -1,5 +1,16 @@
-import mainBannerVideo from '../../assets/mp4/main_movie_banner.mp4';
+import { useEffect, useMemo, useState } from 'react';
 import { API_BASE } from '../../apis/client';
+
+function resolvePosterUrl(movie) {
+  if (!movie) return null;
+  if (movie.banner_url) {
+    return String(movie.banner_url).startsWith('http') ? movie.banner_url : `${API_BASE}${movie.banner_url}`;
+  }
+  if (movie.thumbnail_url) {
+    return String(movie.thumbnail_url).startsWith('http') ? movie.thumbnail_url : `${API_BASE}${movie.thumbnail_url}`;
+  }
+  return null;
+}
 
 export default function HeroBannerStage({
   movie,
@@ -17,25 +28,65 @@ export default function HeroBannerStage({
   restartSequence,
   handleGoToDetail,
   handleOpenInfo,
+  onVideoReady,
 }) {
+  const posterUrl = useMemo(() => resolvePosterUrl(movie), [movie]);
+  /** Không bundle ~20MB MP4 vào chunk đầu — chỉ import khi thật sự phát fallback local */
+  const [localFallbackVideoUrl, setLocalFallbackVideoUrl] = useState(null);
+
+  useEffect(() => {
+    if (!showPlayer || !useLocalFallback) {
+      setLocalFallbackVideoUrl(null);
+      return undefined;
+    }
+    let cancelled = false;
+    import('../../assets/mp4/main_movie_banner.mp4').then((m) => {
+      if (!cancelled) setLocalFallbackVideoUrl(m.default);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [showPlayer, useLocalFallback]);
+
+  /** Preload poster LCP — bắt đầu tải ảnh sớm ngay khi có URL (trước khi paint <img>) */
+  useEffect(() => {
+    if (!posterUrl) return undefined;
+    const id = 'hero-banner-lcp-preload';
+    let link = document.getElementById(id);
+    if (!link) {
+      link = document.createElement('link');
+      link.id = id;
+      link.rel = 'preload';
+      link.as = 'image';
+      document.head.appendChild(link);
+    }
+    link.href = posterUrl;
+    link.setAttribute('fetchpriority', 'high');
+    return () => {
+      const el = document.getElementById(id);
+      if (el?.parentNode) el.parentNode.removeChild(el);
+    };
+  }, [posterUrl]);
+
   return (
     <section className="hero-banner">
       {!showPlayer && movie && (
-        <img
-          className={`hero-banner-image${startFade ? ' hero-banner-poster-fade' : ''}`}
-          src={
-            movie.banner_url
-              ? String(movie.banner_url).startsWith('http')
-                ? movie.banner_url
-                : `${API_BASE}${movie.banner_url}`
-              : movie.thumbnail_url
-                ? String(movie.thumbnail_url).startsWith('http')
-                  ? movie.thumbnail_url
-                  : `${API_BASE}${movie.thumbnail_url}`
-                : mainBannerVideo
-          }
-          alt={movie.title}
-        />
+        posterUrl ? (
+          <img
+            className={`hero-banner-image${startFade ? ' hero-banner-poster-fade' : ''}`}
+            src={posterUrl}
+            alt=""
+            width={1920}
+            height={1080}
+            decoding="async"
+            fetchPriority="high"
+          />
+        ) : (
+          <div
+            className={`hero-banner-image hero-banner-image--placeholder${startFade ? ' hero-banner-poster-fade' : ''}`}
+            aria-hidden
+          />
+        )
       )}
 
       {showPlayer && (
@@ -47,13 +98,15 @@ export default function HeroBannerStage({
               src={videoSrc}
               muted={muted}
               playsInline
+              preload="metadata"
+              onCanPlay={onVideoReady}
               onEnded={handleHeroVideoEnded}
             />
-          ) : useLocalFallback ? (
+          ) : useLocalFallback && localFallbackVideoUrl ? (
             <video
               ref={videoRef}
               className="hero-banner-video"
-              src={mainBannerVideo}
+              src={localFallbackVideoUrl}
               poster={
                 movie?.thumbnail_url
                   ? String(movie.thumbnail_url).startsWith('http')
@@ -63,8 +116,12 @@ export default function HeroBannerStage({
               }
               muted={muted}
               playsInline
+              preload="metadata"
+              onCanPlay={onVideoReady}
               onEnded={handleHeroVideoEnded}
             />
+          ) : useLocalFallback ? (
+            <div className="hero-banner-video hero-banner-video--loading" aria-hidden />
           ) : null}
         </>
       )}

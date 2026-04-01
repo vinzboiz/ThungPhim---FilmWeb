@@ -1,32 +1,43 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import HomePage from '../pages/HomePage.jsx';
 import LoginPage from '../pages/LoginPage.jsx';
 import RegisterPage from '../pages/RegisterPage.jsx';
 import ProfileSelectPage from '../pages/ProfileSelectPage.jsx';
-import ContentDetailPage from '../pages/ContentDetailPage.jsx';
-import PersonDetailPage from '../pages/PersonDetailPage.jsx';
-import MyListPage from '../pages/MyListPage.jsx';
-import FavoritesPage from '../pages/FavoritesPage.jsx';
-import AdminAddMoviePage from '../pages/AdminAddMoviePage.jsx';
-import AdminMoviesPage from '../pages/AdminMoviesPage.jsx';
-import AdminEditMoviePage from '../pages/AdminEditMoviePage.jsx';
-import AdminGenresPage from '../pages/AdminGenresPage.jsx';
-import AdminPersonsPage from '../pages/AdminPersonsPage.jsx';
-import AdminSeriesListPage from '../pages/AdminSeriesListPage.jsx';
-import AdminAddSeriesPage from '../pages/AdminAddSeriesPage.jsx';
-import AdminSeriesDetailPage from '../pages/AdminSeriesDetailPage.jsx';
-import AdminEditSeriesPage from '../pages/AdminEditSeriesPage.jsx';
-import AdminEditEpisodePage from '../pages/AdminEditEpisodePage.jsx';
-import AdminDashboardPage from '../pages/AdminDashboardPage.jsx';
-import AdminUsersPage from '../pages/AdminUsersPage.jsx';
-import SearchPage from '../pages/SearchPage.jsx';
-import GenresPage from '../pages/GenresPage.jsx';
-import WatchEpisodePage from '../pages/WatchEpisodePage.jsx';
-import WatchMoviePage from '../pages/WatchMoviePage.jsx';
-import WatchHistoryPage from '../pages/WatchHistoryPage.jsx';
-import AccountPage from '../pages/AccountPage.jsx';
 import MainLayout from '../components/layout/MainLayout.jsx';
 import { useAuth } from '../hooks/useAuth.js';
+
+const ContentDetailPage = lazy(() => import('../pages/ContentDetailPage.jsx'));
+const PersonDetailPage = lazy(() => import('../pages/PersonDetailPage.jsx'));
+const MyListPage = lazy(() => import('../pages/MyListPage.jsx'));
+const FavoritesPage = lazy(() => import('../pages/FavoritesPage.jsx'));
+const SearchPage = lazy(() => import('../pages/SearchPage.jsx'));
+const GenresPage = lazy(() => import('../pages/GenresPage.jsx'));
+const WatchEpisodePage = lazy(() => import('../pages/WatchEpisodePage.jsx'));
+const WatchMoviePage = lazy(() => import('../pages/WatchMoviePage.jsx'));
+const WatchHistoryPage = lazy(() => import('../pages/WatchHistoryPage.jsx'));
+const AccountPage = lazy(() => import('../pages/AccountPage.jsx'));
+
+const AdminDashboardPage = lazy(() => import('../pages/AdminDashboardPage.jsx'));
+const AdminMoviesPage = lazy(() => import('../pages/AdminMoviesPage.jsx'));
+const AdminAddMoviePage = lazy(() => import('../pages/AdminAddMoviePage.jsx'));
+const AdminEditMoviePage = lazy(() => import('../pages/AdminEditMoviePage.jsx'));
+const AdminGenresPage = lazy(() => import('../pages/AdminGenresPage.jsx'));
+const AdminPersonsPage = lazy(() => import('../pages/AdminPersonsPage.jsx'));
+const AdminSeriesListPage = lazy(() => import('../pages/AdminSeriesListPage.jsx'));
+const AdminAddSeriesPage = lazy(() => import('../pages/AdminAddSeriesPage.jsx'));
+const AdminSeriesDetailPage = lazy(() => import('../pages/AdminSeriesDetailPage.jsx'));
+const AdminEditSeriesPage = lazy(() => import('../pages/AdminEditSeriesPage.jsx'));
+const AdminEditEpisodePage = lazy(() => import('../pages/AdminEditEpisodePage.jsx'));
+const AdminUsersPage = lazy(() => import('../pages/AdminUsersPage.jsx'));
+
+const adminSuspenseFallback = (
+  <div style={{ padding: '2rem', textAlign: 'center', color: 'rgba(255,255,255,0.75)' }}>Đang tải trang quản trị…</div>
+);
+
+const pageSuspenseFallback = (
+  <div style={{ padding: '2rem', textAlign: 'center', color: 'rgba(255,255,255,0.75)' }}>Đang tải…</div>
+);
 
 function AdminRoute({ children }) {
   const { isLoggedIn, isAdmin } = useAuth();
@@ -108,7 +119,9 @@ function AppRouter() {
           path="/movies/:id"
           element={(
             <MainLayout>
-              <ContentDetailPage />
+              <Suspense fallback={pageSuspenseFallback}>
+                <ContentDetailPage />
+              </Suspense>
             </MainLayout>
           )}
         />
@@ -116,7 +129,9 @@ function AppRouter() {
           path="/series/:id"
           element={(
             <MainLayout>
-              <ContentDetailPage />
+              <Suspense fallback={pageSuspenseFallback}>
+                <ContentDetailPage />
+              </Suspense>
             </MainLayout>
           )}
         />
@@ -124,7 +139,9 @@ function AppRouter() {
           path="/persons/:id"
           element={(
             <MainLayout>
-              <PersonDetailPage />
+              <Suspense fallback={pageSuspenseFallback}>
+                <PersonDetailPage />
+              </Suspense>
             </MainLayout>
           )}
         />
@@ -133,7 +150,9 @@ function AppRouter() {
           element={(
             <UserRoute>
               <MainLayout>
-                <MyListPage />
+                <Suspense fallback={pageSuspenseFallback}>
+                  <MyListPage />
+                </Suspense>
               </MainLayout>
             </UserRoute>
           )}
@@ -143,7 +162,9 @@ function AppRouter() {
           element={(
             <UserRoute>
               <MainLayout>
-                <FavoritesPage />
+                <Suspense fallback={pageSuspenseFallback}>
+                  <FavoritesPage />
+                </Suspense>
               </MainLayout>
             </UserRoute>
           )}
@@ -152,7 +173,9 @@ function AppRouter() {
           path="/search"
           element={(
             <MainLayout>
-              <SearchPage />
+              <Suspense fallback={pageSuspenseFallback}>
+                <SearchPage />
+              </Suspense>
             </MainLayout>
           )}
         />
@@ -168,7 +191,9 @@ function AppRouter() {
           path="/genres"
           element={(
             <MainLayout>
-              <GenresPage />
+              <Suspense fallback={pageSuspenseFallback}>
+                <GenresPage />
+              </Suspense>
             </MainLayout>
           )}
         />
@@ -177,7 +202,9 @@ function AppRouter() {
           element={(
             <UserRoute>
               <MainLayout>
-                <WatchMoviePage />
+                <Suspense fallback={pageSuspenseFallback}>
+                  <WatchMoviePage />
+                </Suspense>
               </MainLayout>
             </UserRoute>
           )}
@@ -187,7 +214,9 @@ function AppRouter() {
           element={(
             <UserRoute>
               <MainLayout>
-                <WatchEpisodePage />
+                <Suspense fallback={pageSuspenseFallback}>
+                  <WatchEpisodePage />
+                </Suspense>
               </MainLayout>
             </UserRoute>
           )}
@@ -197,7 +226,9 @@ function AppRouter() {
           element={(
             <UserRoute>
               <MainLayout>
-                <WatchHistoryPage />
+                <Suspense fallback={pageSuspenseFallback}>
+                  <WatchHistoryPage />
+                </Suspense>
               </MainLayout>
             </UserRoute>
           )}
@@ -206,7 +237,9 @@ function AppRouter() {
           path="/account"
           element={(
             <MainLayout>
-              <AccountPage />
+              <Suspense fallback={pageSuspenseFallback}>
+                <AccountPage />
+              </Suspense>
             </MainLayout>
           )}
         />
@@ -215,7 +248,9 @@ function AppRouter() {
           element={(
             <AdminRoute>
               <MainLayout>
-                <AdminDashboardPage />
+                <Suspense fallback={adminSuspenseFallback}>
+                  <AdminDashboardPage />
+                </Suspense>
               </MainLayout>
             </AdminRoute>
           )}
@@ -225,7 +260,9 @@ function AppRouter() {
           element={(
             <AdminRoute>
               <MainLayout>
-                <AdminMoviesPage />
+                <Suspense fallback={adminSuspenseFallback}>
+                  <AdminMoviesPage />
+                </Suspense>
               </MainLayout>
             </AdminRoute>
           )}
@@ -235,7 +272,9 @@ function AppRouter() {
           element={(
             <AdminRoute>
               <MainLayout>
-                <AdminAddMoviePage />
+                <Suspense fallback={adminSuspenseFallback}>
+                  <AdminAddMoviePage />
+                </Suspense>
               </MainLayout>
             </AdminRoute>
           )}
@@ -245,7 +284,9 @@ function AppRouter() {
           element={(
             <AdminRoute>
               <MainLayout>
-                <AdminEditMoviePage />
+                <Suspense fallback={adminSuspenseFallback}>
+                  <AdminEditMoviePage />
+                </Suspense>
               </MainLayout>
             </AdminRoute>
           )}
@@ -255,7 +296,9 @@ function AppRouter() {
           element={(
             <AdminRoute>
               <MainLayout>
-                <AdminSeriesListPage />
+                <Suspense fallback={adminSuspenseFallback}>
+                  <AdminSeriesListPage />
+                </Suspense>
               </MainLayout>
             </AdminRoute>
           )}
@@ -265,7 +308,9 @@ function AppRouter() {
           element={(
             <AdminRoute>
               <MainLayout>
-                <AdminAddSeriesPage />
+                <Suspense fallback={adminSuspenseFallback}>
+                  <AdminAddSeriesPage />
+                </Suspense>
               </MainLayout>
             </AdminRoute>
           )}
@@ -275,7 +320,9 @@ function AppRouter() {
           element={(
             <AdminRoute>
               <MainLayout>
-                <AdminEditSeriesPage />
+                <Suspense fallback={adminSuspenseFallback}>
+                  <AdminEditSeriesPage />
+                </Suspense>
               </MainLayout>
             </AdminRoute>
           )}
@@ -285,7 +332,9 @@ function AppRouter() {
           element={(
             <AdminRoute>
               <MainLayout>
-                <AdminEditEpisodePage />
+                <Suspense fallback={adminSuspenseFallback}>
+                  <AdminEditEpisodePage />
+                </Suspense>
               </MainLayout>
             </AdminRoute>
           )}
@@ -295,7 +344,9 @@ function AppRouter() {
           element={(
             <AdminRoute>
               <MainLayout>
-                <AdminSeriesDetailPage />
+                <Suspense fallback={adminSuspenseFallback}>
+                  <AdminSeriesDetailPage />
+                </Suspense>
               </MainLayout>
             </AdminRoute>
           )}
@@ -305,7 +356,9 @@ function AppRouter() {
           element={(
             <AdminRoute>
               <MainLayout>
-                <AdminGenresPage />
+                <Suspense fallback={adminSuspenseFallback}>
+                  <AdminGenresPage />
+                </Suspense>
               </MainLayout>
             </AdminRoute>
           )}
@@ -315,7 +368,9 @@ function AppRouter() {
           element={(
             <AdminRoute>
               <MainLayout>
-                <AdminPersonsPage />
+                <Suspense fallback={adminSuspenseFallback}>
+                  <AdminPersonsPage />
+                </Suspense>
               </MainLayout>
             </AdminRoute>
           )}
@@ -325,7 +380,9 @@ function AppRouter() {
           element={(
             <AdminRoute>
               <MainLayout>
-                <AdminUsersPage />
+                <Suspense fallback={adminSuspenseFallback}>
+                  <AdminUsersPage />
+                </Suspense>
               </MainLayout>
             </AdminRoute>
           )}
@@ -336,5 +393,3 @@ function AppRouter() {
 }
 
 export default AppRouter;
-
-

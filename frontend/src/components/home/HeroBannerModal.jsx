@@ -67,6 +67,9 @@ export default function HeroBannerModal({
                     : ''
                 }
                 alt=""
+                width={1280}
+                height={720}
+                decoding="async"
               />
             )}
             <div className="hero-banner-modal-top-gradient" />

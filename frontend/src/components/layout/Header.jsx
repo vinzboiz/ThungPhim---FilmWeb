@@ -124,8 +124,8 @@ function Header() {
     <header className={`app-header${scrolled || !isHome ? ' app-header--scrolled' : ''}`}>
       <nav className="app-header-nav">
         <div className="header-left">
-          <Link to="/" className="app-link-brand" onClick={scrollToTop}>
-            <img src={logoNetflix} alt="ThungPhim" className="header-logo" />
+          <Link to="/" className="app-link-brand" onClick={scrollToTop} aria-label="ThungPhim — Trang chủ">
+            <img src={logoNetflix} alt="" width={100} height={30} className="header-logo" />
           </Link>
           <Link
             to="/"
@@ -213,7 +213,7 @@ function Header() {
               aria-label="Menu tài khoản"
             >
               {profileAvatar ? (
-                <img src={AVATAR_URL(profileAvatar)} alt="" />
+                <img src={AVATAR_URL(profileAvatar)} alt="" width={32} height={32} />
               ) : (
                 profileName ? profileName.charAt(0).toUpperCase() : 'U'
               )}

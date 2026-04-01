@@ -1,14 +1,22 @@
+import { memo } from 'react';
 import { Link } from 'react-router-dom';
-import { API_BASE } from '../../apis/client';
+import { posterImageResponsiveProps, resolveMediaUrl } from '../../utils/mediaUrl';
 
 function MovieCard({ movie }) {
+  const thumb = resolveMediaUrl(movie.thumbnail_url);
+  const imgProps = posterImageResponsiveProps(thumb);
+
   return (
     <div className="card">
-      {movie.thumbnail_url && (
+      {imgProps && (
         <img
-          src={`${API_BASE}${movie.thumbnail_url}`}
-          alt={movie.title}
+          alt=""
           className="card-img"
+          width={400}
+          height={225}
+          decoding="async"
+          loading="lazy"
+          {...imgProps}
         />
       )}
       <h3 className="card-title">{movie.title}</h3>
@@ -27,4 +35,4 @@ function MovieCard({ movie }) {
   );
 }
 
-export default MovieCard;
+export default memo(MovieCard);

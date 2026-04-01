@@ -16,6 +16,12 @@ import java.nio.file.Paths;
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
 
+    /** Dev: Vite dev (8080) + vite preview (4173). Thêm origin production khi deploy. */
+    private static final String[] LOCAL_FRONTEND_ORIGINS = {
+            "http://localhost:8080",
+            "http://localhost:4173",
+    };
+
     @Value("${app.upload.root:uploads}")
     private String uploadRoot;
 
@@ -31,12 +37,12 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/api/**")
-                .allowedOrigins("http://localhost:8080")
+                .allowedOrigins(LOCAL_FRONTEND_ORIGINS)
                 .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
                 .allowCredentials(true);
         registry.addMapping("/uploads/**")
-                .allowedOrigins("http://localhost:8080")
+                .allowedOrigins(LOCAL_FRONTEND_ORIGINS)
                 .allowedMethods("GET", "OPTIONS");
     }
 

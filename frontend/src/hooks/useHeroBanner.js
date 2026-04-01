@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { API_BASE, api, getToken, getProfileId } from '../apis/client';
 import { resolveMediaUrl } from '../utils/mediaUrl';
@@ -60,21 +60,26 @@ export function useHeroBanner({ externalModalItem = null, onCloseModal, heroType
     const fadeTimer = setTimeout(() => {
       setStartFade(true);
       setShrinkTitle(true);
-      setTimeout(() => setShowPlayer(true), 2000);
-    }, 3000);
+      setTimeout(() => setShowPlayer(true), 1600);
+    }, 2200);
     return () => clearTimeout(fadeTimer);
   }, [movie]);
 
-  useEffect(() => {
-    if (!showPlayer || !videoRef.current) return;
-    const el = videoRef.current;
-    if (el.tagName !== 'VIDEO') return;
-    el.muted = muted;
-    el.play().catch(() => {});
-  }, [showPlayer, movie, muted]);
-
   const trailerUrl = movie?.trailer_url;
   const videoSrc = trailerUrl ? resolveMediaUrl(trailerUrl) : null;
+
+  const tryPlayHeroVideo = useCallback(() => {
+    const el = videoRef.current;
+    if (!el || el.tagName !== 'VIDEO') return;
+    el.muted = muted;
+    el.play().catch(() => {});
+  }, [muted]);
+
+  useEffect(() => {
+    if (!showPlayer) return;
+    tryPlayHeroVideo();
+  }, [showPlayer, movie, muted, videoSrc, tryPlayHeroVideo]);
+
   const shortIntro =
     (movie && movie.short_intro) ||
     (movie && movie.description
@@ -339,6 +344,7 @@ export function useHeroBanner({ externalModalItem = null, onCloseModal, heroType
       restartSequence,
       handleGoToDetail,
       handleOpenInfo,
+      onVideoReady: tryPlayHeroVideo,
     },
     modal: {
       modalContent,

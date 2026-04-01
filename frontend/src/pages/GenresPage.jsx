@@ -250,6 +250,10 @@ function GenresPage() {
               <img
                 src={selectedGenre.thumbnail_url.startsWith('http') ? selectedGenre.thumbnail_url : `${API_BASE}${selectedGenre.thumbnail_url}`}
                 alt=""
+                width={200}
+                height={300}
+                decoding="async"
+                loading="lazy"
                 className="genres-page-banner-img"
               />
             ) : (

@@ -1,4 +1,5 @@
-const API_BASE = 'http://localhost:5000';
+/** Dùng VITE_API_BASE trong .env — trùng origin backend để preconnect trong main.jsx */
+const API_BASE = (import.meta.env.VITE_API_BASE || 'http://localhost:5000').replace(/\/$/, '');
 
 function getToken() {
   const raw = localStorage.getItem('token');

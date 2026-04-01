@@ -8,6 +8,16 @@
   background-color: var(--color-bg-main, #000);
 }
 
+.home-deferred-section {
+  min-height: 1px;
+}
+
+.home-deferred-placeholder {
+  border-radius: 4px;
+  background: linear-gradient(180deg, rgba(40, 40, 40, 0.6) 0%, rgba(20, 20, 20, 0.4) 100%);
+  contain: layout style;
+}
+
 .section {
   margin-bottom: 32px;
 }
@@ -139,5 +149,10 @@
 
 .home-row-arrow-right {
   margin-left: 4px;
+}
+
+/* Placeholder khi code-split (lazy) đang tải — giữ không gian tối thiểu */
+.home-lazy-fallback {
+  min-height: 120px;
 }
 

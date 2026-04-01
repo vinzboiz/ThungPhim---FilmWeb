@@ -23,7 +23,7 @@ export default function ContentDetailHero({
       <div className="movie-detail-banner-gradient" />
       <div className="movie-detail-banner-inner">
         <div className="movie-detail-poster">
-          {thumbSrc && <img src={thumbSrc} alt={title} />}
+          {thumbSrc && <img src={thumbSrc} alt="" width={140} height={210} decoding="async" />}
         </div>
         <div className="movie-detail-info">
           <h1 className="movie-detail-title">{title}</h1>

@@ -1,5 +1,8 @@
 .home-movie-row {
   margin-bottom: 32px;
+  /* Giảm layout/paint cho hàng ngoài viewport (khi trình duyệt hỗ trợ) */
+  content-visibility: auto;
+  contain-intrinsic-size: 1200px 320px;
 }
 
 .home-movie-row-title {

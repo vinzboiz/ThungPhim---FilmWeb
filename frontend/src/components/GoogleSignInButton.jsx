@@ -1,5 +1,42 @@
 import { useEffect, useRef } from 'react';
 
+const GSI_SCRIPT_SRC = 'https://accounts.google.com/gsi/client';
+
+/** Tải GIS một lần — không chặn FCP trên các trang không cần Google */
+function loadGsiScript() {
+  return new Promise((resolve, reject) => {
+    if (typeof window !== 'undefined' && window.google?.accounts?.id) {
+      resolve();
+      return;
+    }
+    const existing = document.querySelector(`script[src="${GSI_SCRIPT_SRC}"]`);
+    if (existing) {
+      const waitReady = () => {
+        if (window.google?.accounts?.id) resolve();
+        else setTimeout(waitReady, 50);
+      };
+      if (existing.getAttribute('data-loaded') === '1') {
+        waitReady();
+        return;
+      }
+      existing.addEventListener('load', waitReady);
+      existing.addEventListener('error', () => reject(new Error('GSI script error')));
+      return;
+    }
+    const s = document.createElement('script');
+    s.src = GSI_SCRIPT_SRC;
+    s.async = true;
+    s.defer = true;
+    s.setAttribute('data-gsi-loader', '1');
+    s.onload = () => {
+      s.setAttribute('data-loaded', '1');
+      resolve();
+    };
+    s.onerror = () => reject(new Error('GSI script failed'));
+    document.head.appendChild(s);
+  });
+}
+
 // Chỉ initialize Google một lần cho cả app (tránh warning "initialize() is called multiple times")
 let googleAccountsInitialized = false;
 const globalCallbackRef = { onSuccess: null, onError: null };
@@ -16,9 +53,12 @@ export default function GoogleSignInButton({ onSuccess, onError, disabled = fals
   }, [onSuccess, onError]);
 
   useEffect(() => {
-    if (!clientId || !containerRef.current || renderedRef.current) return;
+    if (!clientId || !containerRef.current || renderedRef.current) return undefined;
+
+    let cancelled = false;
 
     const initGoogle = () => {
+      if (cancelled) return;
       if (typeof window.google === 'undefined' || !window.google.accounts) {
         setTimeout(initGoogle, 100);
         return;
@@ -52,7 +92,15 @@ export default function GoogleSignInButton({ onSuccess, onError, disabled = fals
       }
     };
 
-    initGoogle();
+    loadGsiScript()
+      .then(() => {
+        if (!cancelled) initGoogle();
+      })
+      .catch((e) => globalCallbackRef.onError?.(e));
+
+    return () => {
+      cancelled = true;
+    };
   }, [clientId]);
 
   if (!clientId) {

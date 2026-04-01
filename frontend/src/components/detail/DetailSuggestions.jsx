@@ -244,7 +244,15 @@ function DetailSuggestions({ type, contentId, onOpenInfo }) {
               <Link to={link} className="detail-suggestions-card">
                 <div className="detail-suggestions-img-wrap">
                   {imgUrl ? (
-                    <img src={imgUrl} alt={item.title} className="detail-suggestions-img" />
+                    <img
+                      src={imgUrl}
+                      alt=""
+                      width={320}
+                      height={180}
+                      decoding="async"
+                      loading="lazy"
+                      className="detail-suggestions-img"
+                    />
                   ) : (
                     <div className="detail-suggestions-img detail-suggestions-img--placeholder" />
                   )}
@@ -274,7 +282,14 @@ function DetailSuggestions({ type, contentId, onOpenInfo }) {
         >
           <div className="detail-suggestions-hover-img-wrap">
             {getImageUrl(hoveredItem) ? (
-              <img src={getImageUrl(hoveredItem)} alt="" className="detail-suggestions-hover-img" />
+              <img
+                src={getImageUrl(hoveredItem)}
+                alt=""
+                width={320}
+                height={120}
+                decoding="async"
+                className="detail-suggestions-hover-img"
+              />
             ) : (
               <div className="detail-suggestions-hover-img detail-suggestions-hover-img--placeholder" />
             )}
